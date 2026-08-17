@@ -1,0 +1,64 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Commandes - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-content">
+    <div class="content-header">
+        <h1>Gestion des Commandes</h1>
+    </div>
+
+    {% if orders %}
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>N° Commande</th>
+                    <th>Client</th>
+                    <th>Email</th>
+                    <th>Montant</th>
+                    <th>Statut</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td><strong>{{ order.order_number }}</strong></td>
+                    <td>{{ order.customer_name }}</td>
+                    <td>{{ order.customer_email }}</td>
+                    <td>{{ order.total }} €</td>
+                    <td>
+                        <span class="badge badge-{{ order.status }}">
+                            {{ order.status }}
+                        </span>
+                    </td>
+                    <td>{{ order.created_at.strftime('%d/%m/%Y') }}</td>
+                    <td class="actions-cell">
+                        <a href="{{ url_for('admin_order_detail', id=order.id) }}" 
+                           class="btn btn-sm btn-secondary" title="Détails">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('admin_delete_order', id=order.id) }}" 
+                              style="display: inline;" 
+                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette commande ?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-shopping-cart fa-3x"></i>
+        <p>Aucune commande pour le moment</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

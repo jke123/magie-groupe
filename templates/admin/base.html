@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin - {{ site_name }}{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-buttons.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/enhancements.css') }}">
+    <meta name="robots" content="noindex, nofollow">
+</head>
+<body class="admin-body">
+
+<button class="admin-mobile-toggle" onclick="document.querySelector('.admin-sidebar').classList.toggle('open')">
+    <i class="fas fa-bars"></i>
+</button>
+
+<aside class="admin-sidebar">
+    <div class="logo">
+        <div class="logo-main">MAGIE <span>GROUPE</span></div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase;margin-top:4px;">Panel Admin</div>
+    </div>
+    <nav class="admin-nav">
+        <a href="{{ url_for('admin_dashboard') }}" {% if request.endpoint == 'admin_dashboard' %}class="active"{% endif %}>
+            <i class="fas fa-chart-line"></i> Dashboard
+        </a>
+        <a href="{{ url_for('admin_products') }}" {% if 'product' in request.endpoint %}class="active"{% endif %}>
+            <i class="fas fa-box"></i> Produits
+        </a>
+        <a href="{{ url_for('admin_projects') }}" {% if 'project' in request.endpoint %}class="active"{% endif %}>
+            <i class="fas fa-film"></i> Portfolio
+        </a>
+        <a href="{{ url_for('admin_orders') }}" {% if 'order' in request.endpoint %}class="active"{% endif %}>
+            <i class="fas fa-shopping-cart"></i> Commandes
+        </a>
+        <a href="{{ url_for('admin_appointments') }}" {% if 'appointment' in request.endpoint %}class="active"{% endif %}>
+            <i class="fas fa-calendar"></i> Rendez-vous
+        </a>
+        <a href="{{ url_for('admin_contacts') }}" {% if 'contact' in request.endpoint %}class="active"{% endif %}>
+            <i class="fas fa-envelope"></i> Messages
+        </a>
+        <a href="{{ url_for('admin_newsletter') }}" {% if request.endpoint == 'admin_newsletter' %}class="active"{% endif %}>
+            <i class="fas fa-users"></i> Abonnés
+        </a>
+        <a href="{{ url_for('admin_campaigns') }}" {% if 'campaign' in request.endpoint %}class="active"{% endif %}>
+            <i class="fas fa-paper-plane"></i> Campagnes
+        </a>
+        <a href="{{ url_for('admin_settings') }}" {% if request.endpoint == 'admin_settings' %}class="active"{% endif %}>
+            <i class="fas fa-cog"></i> Paramètres
+        </a>
+    </nav>
+    <div class="admin-sidebar-footer">
+        <a href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+    </div>
+</aside>
+
+<main class="admin-main">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'error' if category == 'error' else 'info' }}" style="margin-bottom:20px;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+</main>
+
+</body>
+</html>

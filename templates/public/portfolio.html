@@ -1,0 +1,43 @@
+{% extends "public/base.html" %}
+{% block title %}Portfolio - {{ site_name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Notre Portfolio</h1>
+    <p>Découvrez nos réalisations en production audiovisuelle</p>
+</div>
+
+<div class="filters">
+    <a href="{{ url_for('portfolio') }}?category=all" class="filter-btn {% if not category or category == 'all' %}active{% endif %}">Tous</a>
+    <a href="{{ url_for('portfolio') }}?category=video" class="filter-btn {% if category == 'video' %}active{% endif %}">Production Vidéo</a>
+    <a href="{{ url_for('portfolio') }}?category=photo" class="filter-btn {% if category == 'photo' %}active{% endif %}">Photographie</a>
+    <a href="{{ url_for('portfolio') }}?category=evenementiel" class="filter-btn {% if category == 'evenementiel' %}active{% endif %}">Événementiel</a>
+</div>
+
+{% if projects %}
+<div class="grid-3">
+    {% for project in projects %}
+    <div class="card">
+        {% if project.image %}
+        <img src="{{ project.image }}" alt="{{ project.title }}" class="card-img">
+        {% else %}
+        <div class="card-img-placeholder">🎬</div>
+        {% endif %}
+        <div class="card-body">
+            <div class="card-location">{{ project.client }}</div>
+            <div class="card-title">{{ project.title }}</div>
+            <span class="badge badge-gold">{{ project.category }}</span>
+        </div>
+        <div class="card-footer">
+            <a href="{{ url_for('project_detail', slug=project.slug) }}" class="btn btn-dark" style="font-size:11px;padding:10px 20px;">Voir le projet</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div style="text-align:center;padding:60px 0;color:var(--gray);">
+    <p>Aucun projet pour le moment.</p>
+</div>
+{% endif %}
+
+{% endblock %}

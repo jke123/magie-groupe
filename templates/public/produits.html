@@ -1,0 +1,71 @@
+{% extends "public/base.html" %}
+{% block title %}Produits - {{ site_name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Notre Boutique</h1>
+    <p>Découvrez notre sélection de produits audiovisuels et commerciaux</p>
+</div>
+
+<div class="filters">
+    <a href="{{ url_for('produits') }}?category=all" class="filter-btn {% if not category or category == 'all' %}active{% endif %}">Tous</a>
+    <a href="{{ url_for('produits') }}?category=audiovisuel" class="filter-btn {% if category == 'audiovisuel' %}active{% endif %}">Audiovisuel</a>
+    <a href="{{ url_for('produits') }}?category=commerce" class="filter-btn {% if category == 'commerce' %}active{% endif %}">Commerce</a>
+    <a href="{{ url_for('produits') }}?category=accessoires" class="filter-btn {% if category == 'accessoires' %}active{% endif %}">Accessoires</a>
+</div>
+
+{% if products %}
+<div class="grid-3">
+    {% for product in products %}
+    <div class="card">
+        {% if product.image %}
+        <img src="{{ product.image }}" alt="{{ product.name }}" class="card-img">
+        {% else %}
+        <div class="card-img-placeholder">🛍️</div>
+        {% endif %}
+        <div class="card-body">
+            <div class="card-location">📍 {{ product.location }}</div>
+            <div class="card-title">{{ product.name }}</div>
+            <div class="card-price">{{ product.price }} €</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                {% if product.stock > 0 %}
+                <span class="badge badge-success">En stock ({{ product.stock }})</span>
+                {% else %}
+                <span class="badge badge-danger">Rupture</span>
+                {% endif %}
+                <span class="badge badge-gold">{{ product.category }}</span>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a href="{{ url_for('product_detail', slug=product.slug) }}" class="btn btn-dark" style="font-size:11px;padding:10px 20px;">Voir détails</a>
+            {% if product.stock > 0 %}
+            <button onclick="addToCart({{ product.id }}, '{{ product.name }}', {{ product.price }}, '{{ product.image or '' }}')" class="btn btn-gold" style="font-size:11px;padding:10px 20px;">+ Panier</button>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">🛍️</div>
+    <h2>Aucun produit disponible</h2>
+    <p>Revenez bientôt pour découvrir nos nouveaux produits.</p>
+    <a href="{{ url_for('contact') }}" class="btn btn-gold">Nous contacter</a>
+</div>
+{% endif %}
+
+<script>
+function addToCart(id, name, price, image) {
+    let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const existing = cart.find(item => item.id === id);
+    if (existing) {
+        existing.quantity += 1;
+    } else {
+        cart.push({id, name, price, image, quantity: 1});
+    }
+    localStorage.setItem('cart', JSON.stringify(cart));
+    updateCartDisplay();
+    alert('✓ ' + name + ' ajouté au panier !');
+}
+</script>
+{% endblock %}

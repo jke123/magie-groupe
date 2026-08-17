@@ -1,0 +1,48 @@
+{% extends "public/base.html" %}
+{% block title %}{{ project.title }} - {{ site_name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>{{ project.title }}</h1>
+    <p><a href="{{ url_for('portfolio') }}" style="color:var(--gold);">← Retour au portfolio</a></p>
+</div>
+
+{% if project.image %}
+<img src="{{ project.image }}" alt="{{ project.title }}" style="width:100%;max-height:500px;object-fit:cover;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:32px;">
+{% endif %}
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:40px;">
+    <div>
+        <span class="badge badge-gold">{{ project.category }}</span>
+        <p style="margin-top:24px;color:var(--text-light);line-height:1.8;">{{ project.description }}</p>
+
+        {% if project.video_url %}
+        <div style="margin-top:32px;">
+            <h3 style="margin-bottom:16px;">Vidéo du projet</h3>
+            <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:var(--radius);">
+                <iframe src="{{ project.video_url }}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allowfullscreen></iframe>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    <div class="contact-info-box">
+        <h2>Détails</h2>
+        {% if project.client %}
+        <div class="contact-item">
+            <strong>Client</strong>
+            <p>{{ project.client }}</p>
+        </div>
+        {% endif %}
+        {% if project.date %}
+        <div class="contact-item">
+            <strong>Date</strong>
+            <p>{{ project.date }}</p>
+        </div>
+        {% endif %}
+        <div style="margin-top:24px;">
+            <a href="{{ url_for('rendez_vous') }}" class="btn btn-gold btn-full">Un projet similaire ? →</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

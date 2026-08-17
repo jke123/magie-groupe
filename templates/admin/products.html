@@ -1,0 +1,83 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Produits - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-content">
+    <div class="content-header">
+        <h1>Gestion des Produits</h1>
+        <a href="{{ url_for('admin_new_product') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nouveau Produit
+        </a>
+    </div>
+
+    {% if products %}
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Image</th>
+                    <th>Nom</th>
+                    <th>Prix</th>
+                    <th>Stock</th>
+                    <th>Catégorie</th>
+                    <th>Vedette</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td>
+                        {% if product.image %}
+                        <img src="{{ product.image }}"
+                             alt="{{ product.name }}" class="table-thumbnail">
+                        {% else %}
+                        <div class="no-image">Pas d'image</div>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ product.name }}</strong></td>
+                    <td>{{ product.price }} €</td>
+                    <td>
+                        {% if product.stock > 0 %}
+                        <span class="badge badge-success">{{ product.stock }}</span>
+                        {% else %}
+                        <span class="badge badge-danger">Rupture</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ product.category }}</td>
+                    <td>
+                        {% if product.featured %}
+                        <i class="fas fa-star" style="color: #c9a84c;"></i>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="actions-cell">
+                        <a href="{{ url_for('admin_edit_product', id=product.id) }}" 
+                           class="btn btn-sm btn-secondary" title="Modifier">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('admin_delete_product', id=product.id) }}" 
+                              style="display: inline;" 
+                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce produit ?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-box-open fa-3x"></i>
+        <p>Aucun produit pour le moment</p>
+        <a href="{{ url_for('admin_new_product') }}" class="btn btn-primary">Créer le premier produit</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

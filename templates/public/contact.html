@@ -1,0 +1,80 @@
+{% extends "public/base.html" %}
+{% block title %}Contact - {{ site_name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Contactez-nous</h1>
+    <p>Notre équipe est à votre écoute du lundi au samedi</p>
+</div>
+
+<div class="contact-grid">
+    <div class="form-section">
+        <h2 class="form-title">Envoyez-nous un message</h2>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="name">Nom complet <span class="required">*</span></label>
+                <input type="text" id="name" name="name" class="form-control" placeholder="Jean Dupont" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email <span class="required">*</span></label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="jean@exemple.com" required>
+            </div>
+            <div class="form-group">
+                <label for="phone">Téléphone</label>
+                <input type="tel" id="phone" name="phone" class="form-control" placeholder="+33 6 00 00 00 00">
+            </div>
+            <div class="form-group">
+                <label for="subject">Sujet <span class="required">*</span></label>
+                <input type="text" id="subject" name="subject" class="form-control" placeholder="Objet de votre message" required>
+            </div>
+            <div class="form-group">
+                <label for="message">Message <span class="required">*</span></label>
+                <textarea id="message" name="message" class="form-control" rows="5" placeholder="Votre message..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-gold btn-full">Envoyer le message →</button>
+        </form>
+    </div>
+
+    <div class="contact-info-box">
+        <h2>Nos coordonnées</h2>
+        <div class="contact-item">
+            <div class="contact-icon">📍</div>
+            <div>
+                <strong>Adresse</strong>
+                <p>{{ site_address }}</p>
+            </div>
+        </div>
+        <div class="contact-item">
+            <div class="contact-icon">📞</div>
+            <div>
+                <strong>Téléphone</strong>
+                <a href="tel:{{ site_phone }}">{{ site_phone }}</a>
+            </div>
+        </div>
+        <div class="contact-item">
+            <div class="contact-icon">✉️</div>
+            <div>
+                <strong>Email</strong>
+                <a href="mailto:{{ site_email }}">{{ site_email }}</a>
+            </div>
+        </div>
+        <div class="contact-item">
+            <div class="contact-icon">💬</div>
+            <div>
+                <strong>WhatsApp</strong>
+                <a href="https://wa.me/{{ site_whatsapp.replace('+','').replace(' ','') }}" target="_blank">{{ site_whatsapp }}</a>
+            </div>
+        </div>
+        <div style="margin-top:32px;padding-top:32px;border-top:1px solid rgba(201,168,76,0.2);">
+            <strong style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:600;">Horaires</strong>
+            <p style="margin-top:10px;color:rgba(255,255,255,0.7);font-size:14px;line-height:1.8;">
+                Lundi — Vendredi : 9h00 – 18h00<br>
+                Samedi : 10h00 – 16h00<br>
+                Dimanche : Sur rendez-vous
+            </p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,176 @@
+/* ====================================
+   STYLES BOUTONS SUPPRESSION & ACTIONS
+   À ajouter dans static/css/style.css
+   ==================================== */
+
+.actions-cell {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: white;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+}
+
+.btn-primary {
+    background-color: #c9a84c;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #b89538;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(201, 168, 76, 0.3);
+}
+
+.data-table td {
+    vertical-align: middle;
+}
+
+.table-thumbnail {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 5px;
+}
+
+.no-image {
+    width: 60px;
+    height: 60px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #999;
+    border-radius: 5px;
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-pending {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.badge-confirmed {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.badge-completed, .badge-delivered {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-cancelled {
+    background-color: #dc3545;
+    color: white;
+}
+
+.badge-sent {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-draft {
+    background-color: #6c757d;
+    color: white;
+}
+
+.badge-active {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-unsubscribed {
+    background-color: #dc3545;
+    color: white;
+}
+
+.badge-new {
+    background-color: #007bff;
+    color: white;
+}
+
+.badge-read {
+    background-color: #6c757d;
+    color: white;
+}
+
+.badge-replied {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #999;
+}
+
+.empty-state i {
+    color: #c9a84c;
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+}

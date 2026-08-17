@@ -1,0 +1,23 @@
+{% extends "public/base.html" %}
+{% block title %}Commande confirmée - {{ site_name }}{% endblock %}
+{% block content %}
+
+<div style="text-align:center;padding:80px 20px;">
+    <div style="font-size:64px;margin-bottom:24px;">✅</div>
+    <h1 style="margin-bottom:16px;">Commande confirmée !</h1>
+    <p style="color:var(--text-light);margin-bottom:8px;">Numéro de commande :</p>
+    <p style="font-size:24px;font-weight:600;color:var(--gold-dark);margin-bottom:32px;">{{ order.order_number }}</p>
+    <p style="color:var(--text-light);max-width:500px;margin:0 auto 32px;">
+        Merci {{ order.customer_name }} ! Nous avons bien reçu votre commande d'un montant de
+        <strong>{{ order.total }} €</strong>. Nous vous contacterons rapidement au sujet du paiement et de la livraison.
+    </p>
+    <a href="{{ url_for('index') }}" class="btn btn-gold">Retour à l'accueil</a>
+</div>
+
+<script>
+// Vider le panier maintenant que la commande est confirmée
+localStorage.removeItem('cart');
+localStorage.removeItem('cart_pending');
+</script>
+
+{% endblock %}

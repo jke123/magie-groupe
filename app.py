@@ -1,0 +1,862 @@
+import os
+from flask import Flask, render_template, request, redirect, url_for, flash, session, Response, make_response
+from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timedelta
+from functools import wraps
+from itsdangerous import URLSafeTimedSerializer
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import cloudinary
+import cloudinary.uploader
+
+app = Flask(__name__)
+
+# ==================== CONFIG GÉNÉRALE ====================
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-this-in-production')
+
+# Base de données Postgres (Neon) — fallback SQLite en local pour tests
+db_url = os.environ.get('DATABASE_URL', 'sqlite:///local.db')
+if db_url.startswith('postgres://'):
+    db_url = db_url.replace('postgres://', 'postgresql://', 1)
+if db_url.startswith('postgresql://'):
+    db_url = db_url.replace('postgresql://', 'postgresql+psycopg://', 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 280,
+}
+
+# ==================== SÉCURITÉ ====================
+app.config['SESSION_COOKIE_SECURE'] = True       # cookie envoyé uniquement en HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True     # inaccessible en JS (anti XSS)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'    # anti CSRF basique
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=4)
+
+csrf = CSRFProtect(app)
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
+@app.after_request
+def set_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    return response
+
+# ==================== CLOUDINARY (stockage images) ====================
+cloudinary.config(
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET'),
+    secure=True
+)
+
+def upload_image(file):
+    """Upload une image vers Cloudinary, retourne l'URL sécurisée ou None"""
+    if not file or file.filename == '':
+        return None
+    allowed = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in allowed:
+        return None
+    result = cloudinary.uploader.upload(file, folder="magie-groupe")
+    return result.get('secure_url')
+
+def delete_image(image_url):
+    """Supprime une image Cloudinary à partir de son URL"""
+    if not image_url or 'cloudinary.com' not in image_url:
+        return
+    try:
+        public_id = image_url.split('/')[-1].split('.')[0]
+        cloudinary.uploader.destroy(f"magie-groupe/{public_id}")
+    except Exception:
+        pass
+
+# ==================== NEWSLETTER : SMTP ====================
+SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
+SMTP_USERNAME = os.environ.get('SMTP_USERNAME', '')
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
+SMTP_FROM_EMAIL = os.environ.get('SMTP_FROM_EMAIL', SMTP_USERNAME)
+SMTP_FROM_NAME = 'Magie Groupe'
+
+serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
+db = SQLAlchemy(app)
+
+# ==================== MODÈLES ====================
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    failed_attempts = db.Column(db.Integer, default=0)
+    locked_until = db.Column(db.DateTime, nullable=True)
+
+class Product(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    slug = db.Column(db.String(200), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    price = db.Column(db.Float, nullable=False)
+    category = db.Column(db.String(100))
+    location = db.Column(db.String(200))
+    stock = db.Column(db.Integer, default=0)
+    image = db.Column(db.String(500))  # URL Cloudinary complète désormais
+    featured = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Project(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    slug = db.Column(db.String(200), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    category = db.Column(db.String(100))
+    client = db.Column(db.String(200))
+    date = db.Column(db.String(100))
+    image = db.Column(db.String(500))  # URL Cloudinary complète
+    video_url = db.Column(db.String(500))
+    featured = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Order(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_number = db.Column(db.String(50), unique=True, nullable=False)
+    customer_name = db.Column(db.String(200), nullable=False)
+    customer_email = db.Column(db.String(200), nullable=False)
+    customer_phone = db.Column(db.String(50))
+    customer_address = db.Column(db.Text)
+    total = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(50), default='pending')
+    payment_status = db.Column(db.String(50), default='manual')  # préparé pour Stripe plus tard
+    items = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Appointment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(200), nullable=False)
+    phone = db.Column(db.String(50))
+    service = db.Column(db.String(200))
+    date = db.Column(db.String(50))
+    time = db.Column(db.String(50))
+    message = db.Column(db.Text)
+    status = db.Column(db.String(50), default='pending')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Contact(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(200), nullable=False)
+    phone = db.Column(db.String(50))
+    subject = db.Column(db.String(200))
+    message = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(50), default='new')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class NewsletterSubscriber(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(200), unique=True, nullable=False)
+    category = db.Column(db.String(100), default='les_deux')
+    status = db.Column(db.String(50), default='active')
+    subscribed_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Campaign(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    subject = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(100), default='all')
+    status = db.Column(db.String(50), default='draft')
+    sent_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Setting(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(100), unique=True, nullable=False)
+    value = db.Column(db.Text)
+
+# ==================== UTILITAIRES ====================
+
+def slugify(text):
+    import re
+    text = text.lower()
+    replacements = {'à':'a','á':'a','â':'a','ã':'a','ä':'a','è':'e','é':'e','ê':'e','ë':'e',
+                     'ì':'i','í':'i','î':'i','ï':'i','ò':'o','ó':'o','ô':'o','õ':'o','ö':'o',
+                     'ù':'u','ú':'u','û':'u','ü':'u','ç':'c'}
+    for a, b in replacements.items():
+        text = text.replace(a, b)
+    text = re.sub(r'[^a-z0-9]+', '-', text).strip('-')
+    return text
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Veuillez vous connecter pour accéder à cette page', 'error')
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def generate_order_number():
+    import random, string
+    while True:
+        number = 'MG' + ''.join(random.choices(string.digits, k=8))
+        if not Order.query.filter_by(order_number=number).first():
+            return number
+
+def get_setting(key, default=''):
+    setting = Setting.query.filter_by(key=key).first()
+    return setting.value if setting else default
+
+def validate_password_strength(password):
+    """Retourne (bool, message) — au moins 8 caractères, 1 chiffre, 1 majuscule"""
+    import re
+    if len(password) < 8:
+        return False, "Le mot de passe doit contenir au moins 8 caractères"
+    if not re.search(r'[A-Z]', password):
+        return False, "Le mot de passe doit contenir au moins une majuscule"
+    if not re.search(r'[0-9]', password):
+        return False, "Le mot de passe doit contenir au moins un chiffre"
+    return True, ""
+
+# ==================== NEWSLETTER : ENVOI ====================
+
+def generate_unsubscribe_token(email):
+    return serializer.dumps(email, salt='newsletter-unsubscribe')
+
+def verify_unsubscribe_token(token, max_age=None):
+    try:
+        return serializer.loads(token, salt='newsletter-unsubscribe', max_age=max_age)
+    except Exception:
+        return None
+
+def create_email_template(subject, content, subscriber_email):
+    unsubscribe_token = generate_unsubscribe_token(subscriber_email)
+    unsubscribe_url = url_for('newsletter_unsubscribe', token=unsubscribe_token, _external=True)
+    site_name = get_setting('site_name', 'Magie Groupe')
+    phone = get_setting('phone', '')
+    email = get_setting('email', '')
+
+    return f"""
+    <!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>{subject}</title></head>
+    <body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f5f3ee;">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px;">
+    <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.1);">
+    <tr><td style="background:#c9a84c;padding:3px;"></td></tr>
+    <tr><td style="padding:40px 40px 20px;text-align:center;">
+    <h1 style="margin:0;color:#0a0a0a;font-size:32px;">{site_name.upper()}</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;letter-spacing:2px;">PRODUCTION AUDIOVISUELLE &amp; E-COMMERCE</p>
+    </td></tr>
+    <tr><td style="padding:20px 40px 40px;color:#1a1a1a;font-size:16px;line-height:1.6;">{content}</td></tr>
+    <tr><td style="padding:0 40px;"><hr style="border:none;border-top:1px solid #e0e0e0;"></td></tr>
+    <tr><td style="padding:30px 40px;text-align:center;color:#888;font-size:14px;">
+    <p>{site_name}<br>📞 {phone} | ✉️ {email}</p>
+    <p style="font-size:12px;color:#999;">
+    <a href="{unsubscribe_url}" style="color:#c9a84c;">Se désabonner</a></p>
+    </td></tr>
+    <tr><td style="background:#c9a84c;padding:3px;"></td></tr>
+    </table></td></tr></table></body></html>
+    """
+
+def send_newsletter_email(to_email, subject, content):
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>"
+        msg['To'] = to_email
+        msg.attach(MIMEText(content, 'plain'))
+        msg.attach(MIMEText(create_email_template(subject, content, to_email), 'html'))
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        print(f"Erreur envoi email: {e}")
+        return False
+
+# ==================== SEO ====================
+
+@app.context_processor
+def inject_globals():
+    settings = {s.key: s.value for s in Setting.query.all()}
+    return dict(
+        site_settings=settings,
+        site_name=settings.get('site_name', 'Magie Groupe'),
+        site_phone=settings.get('phone', ''),
+        site_email=settings.get('email', ''),
+        site_address=settings.get('address', ''),
+        site_whatsapp=settings.get('whatsapp', ''),
+        social_instagram=settings.get('instagram', ''),
+        social_facebook=settings.get('facebook', ''),
+        social_tiktok=settings.get('tiktok', '')
+    )
+
+@app.route('/sitemap.xml')
+def sitemap():
+    pages = []
+    base_url = request.url_root.rstrip('/')
+    static_routes = ['index', 'produits', 'portfolio', 'rendez_vous', 'contact']
+    for route in static_routes:
+        pages.append(f"<url><loc>{base_url}{url_for(route)}</loc><changefreq>weekly</changefreq></url>")
+    for p in Product.query.all():
+        pages.append(f"<url><loc>{base_url}{url_for('product_detail', slug=p.slug)}</loc><changefreq>weekly</changefreq></url>")
+    for pr in Project.query.all():
+        pages.append(f"<url><loc>{base_url}{url_for('project_detail', slug=pr.slug)}</loc><changefreq>monthly</changefreq></url>")
+    xml = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{"".join(pages)}</urlset>'
+    return Response(xml, mimetype='application/xml')
+
+@app.route('/robots.txt')
+def robots():
+    base_url = request.url_root.rstrip('/')
+    content = f"User-agent: *\nAllow: /\nDisallow: /admin\nSitemap: {base_url}/sitemap.xml"
+    return Response(content, mimetype='text/plain')
+
+# ==================== ROUTES PUBLIQUES ====================
+
+@app.route('/')
+def index():
+    featured_products = Product.query.filter_by(featured=True).limit(3).all()
+    featured_projects = Project.query.filter_by(featured=True).limit(3).all()
+    return render_template('public/index.html',
+                            featured_products=featured_products,
+                            featured_projects=featured_projects)
+
+@app.route('/produits')
+def produits():
+    category = request.args.get('category')
+    q = Product.query
+    if category:
+        q = q.filter_by(category=category)
+    return render_template('public/produits.html', products=q.all())
+
+@app.route('/produits/<slug>')
+def product_detail(slug):
+    product = Product.query.filter_by(slug=slug).first_or_404()
+    return render_template('public/product_detail.html', product=product)
+
+@app.route('/portfolio')
+def portfolio():
+    category = request.args.get('category')
+    q = Project.query
+    if category:
+        q = q.filter_by(category=category)
+    return render_template('public/portfolio.html', projects=q.all())
+
+@app.route('/portfolio/<slug>')
+def project_detail(slug):
+    project = Project.query.filter_by(slug=slug).first_or_404()
+    return render_template('public/project_detail.html', project=project)
+
+@app.route('/rendez-vous', methods=['GET', 'POST'])
+@limiter.limit("10 per hour")
+def rendez_vous():
+    if request.method == 'POST':
+        appointment = Appointment(
+            name=request.form.get('name'),
+            email=request.form.get('email'),
+            phone=request.form.get('phone'),
+            service=request.form.get('service'),
+            date=request.form.get('date'),
+            time=request.form.get('time'),
+            message=request.form.get('message')
+        )
+        db.session.add(appointment)
+        db.session.commit()
+        flash('Votre demande de rendez-vous a été envoyée avec succès', 'success')
+        return redirect(url_for('rendez_vous'))
+    return render_template('public/rendez_vous.html')
+
+@app.route('/contact', methods=['GET', 'POST'])
+@limiter.limit("10 per hour")
+def contact():
+    if request.method == 'POST':
+        contact = Contact(
+            name=request.form.get('name'),
+            email=request.form.get('email'),
+            phone=request.form.get('phone'),
+            subject=request.form.get('subject'),
+            message=request.form.get('message')
+        )
+        db.session.add(contact)
+        db.session.commit()
+        flash('Votre message a été envoyé avec succès. Nous vous répondrons rapidement.', 'success')
+        return redirect(url_for('contact'))
+    return render_template('public/contact.html')
+
+@app.route('/panier')
+def panier():
+    return render_template('public/panier.html')
+
+@app.route('/checkout', methods=['GET', 'POST'])
+@limiter.limit("10 per hour")
+def checkout():
+    if request.method == 'POST':
+        order = Order(
+            order_number=generate_order_number(),
+            customer_name=request.form.get('name'),
+            customer_email=request.form.get('email'),
+            customer_phone=request.form.get('phone'),
+            customer_address=request.form.get('address'),
+            total=float(request.form.get('total')),
+            items=request.form.get('items'),
+            payment_status='manual'  # Stripe branché ici plus tard
+        )
+        db.session.add(order)
+        db.session.commit()
+        return redirect(url_for('order_success', order_number=order.order_number))
+    return render_template('public/checkout.html')
+
+@app.route('/success/<order_number>')
+def order_success(order_number):
+    order = Order.query.filter_by(order_number=order_number).first_or_404()
+    return render_template('public/success.html', order=order)
+
+@app.route('/newsletter/subscribe', methods=['POST'])
+@limiter.limit("5 per hour")
+def newsletter_subscribe():
+    # Le footer envoie du JSON via fetch() ; on garde un fallback formulaire classique
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
+        email = (data.get('email') or '').strip().lower()
+        category = data.get('category', 'les_deux')
+    else:
+        email = request.form.get('email', '').strip().lower()
+        category = request.form.get('category', 'les_deux')
+
+    if not email or '@' not in email:
+        message, success = 'Adresse email invalide', False
+    else:
+        existing = NewsletterSubscriber.query.filter_by(email=email).first()
+        if existing:
+            if existing.status == 'unsubscribed':
+                existing.status = 'active'
+                db.session.commit()
+                message, success = 'Vous êtes de nouveau abonné', True
+            else:
+                message, success = 'Cet email est déjà abonné', True
+        else:
+            db.session.add(NewsletterSubscriber(email=email, category=category))
+            db.session.commit()
+            message, success = 'Merci de vous être abonné à notre newsletter', True
+
+    if request.is_json:
+        return {'success': success, 'message': message}
+    flash(message, 'success' if success else 'error')
+    return redirect(request.referrer or url_for('index'))
+
+@app.route('/newsletter/unsubscribe/<token>')
+def newsletter_unsubscribe(token):
+    email = verify_unsubscribe_token(token, max_age=60*60*24*365)
+    if not email:
+        flash('Lien de désabonnement invalide ou expiré', 'error')
+        return redirect(url_for('index'))
+    subscriber = NewsletterSubscriber.query.filter_by(email=email).first()
+    if subscriber:
+        subscriber.status = 'unsubscribed'
+        db.session.commit()
+        flash('Vous avez été désabonné de notre newsletter', 'success')
+    return render_template('public/unsubscribe_success.html')
+
+# ==================== ROUTES ADMIN ====================
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
+def admin_login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        user = User.query.filter_by(username=username).first()
+
+        if user and user.locked_until and user.locked_until > datetime.utcnow():
+            flash('Compte temporairement bloqué suite à plusieurs échecs. Réessayez dans quelques minutes.', 'error')
+            return render_template('admin/login.html')
+
+        if user and check_password_hash(user.password_hash, password):
+            user.failed_attempts = 0
+            user.locked_until = None
+            db.session.commit()
+            session.permanent = True
+            session['user_id'] = user.id
+            session['username'] = user.username
+            flash('Connexion réussie', 'success')
+            return redirect(url_for('admin_dashboard'))
+        else:
+            if user:
+                user.failed_attempts = (user.failed_attempts or 0) + 1
+                if user.failed_attempts >= 5:
+                    user.locked_until = datetime.utcnow() + timedelta(minutes=15)
+                db.session.commit()
+            flash('Identifiants incorrects', 'error')
+
+    return render_template('admin/login.html')
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.clear()
+    flash('Vous avez été déconnecté', 'info')
+    return redirect(url_for('admin_login'))
+
+@app.route('/admin')
+@login_required
+def admin_dashboard():
+    stats = {
+        'products': Product.query.count(),
+        'projects': Project.query.count(),
+        'orders': Order.query.count(),
+        'pending_orders': Order.query.filter_by(status='pending').count(),
+        'appointments': Appointment.query.count(),
+        'pending_appointments': Appointment.query.filter_by(status='pending').count(),
+        'contacts': Contact.query.filter_by(status='new').count(),
+        'subscribers': NewsletterSubscriber.query.filter_by(status='active').count()
+    }
+    return render_template('admin/dashboard.html', stats=stats)
+
+@app.route('/admin/change-password', methods=['GET', 'POST'])
+@login_required
+def admin_change_password():
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        user = User.query.get(session['user_id'])
+        if not check_password_hash(user.password_hash, current_password):
+            flash('Mot de passe actuel incorrect', 'error')
+            return redirect(url_for('admin_change_password'))
+
+        if new_password != confirm_password:
+            flash('Les nouveaux mots de passe ne correspondent pas', 'error')
+            return redirect(url_for('admin_change_password'))
+
+        valid, msg = validate_password_strength(new_password)
+        if not valid:
+            flash(msg, 'error')
+            return redirect(url_for('admin_change_password'))
+
+        user.password_hash = generate_password_hash(new_password)
+        db.session.commit()
+        flash('Mot de passe modifié avec succès', 'success')
+        return redirect(url_for('admin_settings'))
+
+    return render_template('admin/change_password.html')
+
+# ---------- Products ----------
+
+@app.route('/admin/products')
+@login_required
+def admin_products():
+    return render_template('admin/products.html', products=Product.query.all())
+
+@app.route('/admin/products/new', methods=['GET', 'POST'])
+@login_required
+def admin_new_product():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        image_url = upload_image(request.files.get('image'))
+        product = Product(
+            name=name,
+            slug=slugify(name),
+            description=request.form.get('description'),
+            price=float(request.form.get('price')),
+            category=request.form.get('category'),
+            location=request.form.get('location'),
+            stock=int(request.form.get('stock', 0)),
+            image=image_url,
+            featured=bool(request.form.get('featured'))
+        )
+        db.session.add(product)
+        db.session.commit()
+        flash('Produit créé avec succès', 'success')
+        return redirect(url_for('admin_products'))
+    return render_template('admin/product_form.html')
+
+@app.route('/admin/products/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def admin_edit_product(id):
+    product = Product.query.get_or_404(id)
+    if request.method == 'POST':
+        product.name = request.form.get('name')
+        product.slug = slugify(product.name)
+        product.description = request.form.get('description')
+        product.price = float(request.form.get('price'))
+        product.category = request.form.get('category')
+        product.location = request.form.get('location')
+        product.stock = int(request.form.get('stock', 0))
+        product.featured = bool(request.form.get('featured'))
+
+        new_image = upload_image(request.files.get('image'))
+        if new_image:
+            delete_image(product.image)
+            product.image = new_image
+
+        db.session.commit()
+        flash('Produit modifié avec succès', 'success')
+        return redirect(url_for('admin_products'))
+    return render_template('admin/product_form.html', product=product)
+
+@app.route('/admin/products/delete/<int:id>', methods=['POST'])
+@login_required
+def admin_delete_product(id):
+    product = Product.query.get_or_404(id)
+    delete_image(product.image)
+    db.session.delete(product)
+    db.session.commit()
+    flash('Produit supprimé avec succès', 'success')
+    return redirect(url_for('admin_products'))
+
+# ---------- Projects ----------
+
+@app.route('/admin/projects')
+@login_required
+def admin_projects():
+    return render_template('admin/projects.html', projects=Project.query.all())
+
+@app.route('/admin/projects/new', methods=['GET', 'POST'])
+@login_required
+def admin_new_project():
+    if request.method == 'POST':
+        title = request.form.get('title')
+        image_url = upload_image(request.files.get('image'))
+        project = Project(
+            title=title,
+            slug=slugify(title),
+            description=request.form.get('description'),
+            category=request.form.get('category'),
+            client=request.form.get('client'),
+            date=request.form.get('date'),
+            image=image_url,
+            video_url=request.form.get('video_url'),
+            featured=bool(request.form.get('featured'))
+        )
+        db.session.add(project)
+        db.session.commit()
+        flash('Projet créé avec succès', 'success')
+        return redirect(url_for('admin_projects'))
+    return render_template('admin/project_form.html')
+
+@app.route('/admin/projects/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def admin_edit_project(id):
+    project = Project.query.get_or_404(id)
+    if request.method == 'POST':
+        project.title = request.form.get('title')
+        project.slug = slugify(project.title)
+        project.description = request.form.get('description')
+        project.category = request.form.get('category')
+        project.client = request.form.get('client')
+        project.date = request.form.get('date')
+        project.video_url = request.form.get('video_url')
+        project.featured = bool(request.form.get('featured'))
+
+        new_image = upload_image(request.files.get('image'))
+        if new_image:
+            delete_image(project.image)
+            project.image = new_image
+
+        db.session.commit()
+        flash('Projet modifié avec succès', 'success')
+        return redirect(url_for('admin_projects'))
+    return render_template('admin/project_form.html', project=project)
+
+@app.route('/admin/projects/delete/<int:id>', methods=['POST'])
+@login_required
+def admin_delete_project(id):
+    project = Project.query.get_or_404(id)
+    delete_image(project.image)
+    db.session.delete(project)
+    db.session.commit()
+    flash('Projet supprimé avec succès', 'success')
+    return redirect(url_for('admin_projects'))
+
+# ---------- Orders ----------
+
+@app.route('/admin/orders')
+@login_required
+def admin_orders():
+    return render_template('admin/orders.html', orders=Order.query.order_by(Order.created_at.desc()).all())
+
+@app.route('/admin/orders/<int:id>')
+@login_required
+def admin_order_detail(id):
+    return render_template('admin/order_detail.html', order=Order.query.get_or_404(id))
+
+@app.route('/admin/orders/<int:id>/status', methods=['POST'])
+@login_required
+def admin_update_order_status(id):
+    order = Order.query.get_or_404(id)
+    order.status = request.form.get('status')
+    db.session.commit()
+    flash('Statut de commande mis à jour', 'success')
+    return redirect(url_for('admin_order_detail', id=id))
+
+@app.route('/admin/orders/delete/<int:id>', methods=['POST'])
+@login_required
+def admin_delete_order(id):
+    db.session.delete(Order.query.get_or_404(id))
+    db.session.commit()
+    flash('Commande supprimée avec succès', 'success')
+    return redirect(url_for('admin_orders'))
+
+# ---------- Appointments ----------
+
+@app.route('/admin/appointments')
+@login_required
+def admin_appointments():
+    return render_template('admin/appointments.html', appointments=Appointment.query.order_by(Appointment.created_at.desc()).all())
+
+@app.route('/admin/appointments/<int:id>')
+@login_required
+def admin_appointment_detail(id):
+    return render_template('admin/appointment_detail.html', appointment=Appointment.query.get_or_404(id))
+
+@app.route('/admin/appointments/<int:id>/status', methods=['POST'])
+@login_required
+def admin_update_appointment_status(id):
+    appointment = Appointment.query.get_or_404(id)
+    appointment.status = request.form.get('status')
+    db.session.commit()
+    flash('Statut de rendez-vous mis à jour', 'success')
+    return redirect(url_for('admin_appointment_detail', id=id))
+
+@app.route('/admin/appointments/delete/<int:id>', methods=['POST'])
+@login_required
+def admin_delete_appointment(id):
+    db.session.delete(Appointment.query.get_or_404(id))
+    db.session.commit()
+    flash('Rendez-vous supprimé avec succès', 'success')
+    return redirect(url_for('admin_appointments'))
+
+# ---------- Contacts ----------
+
+@app.route('/admin/contacts')
+@login_required
+def admin_contacts():
+    return render_template('admin/contacts.html', contacts=Contact.query.order_by(Contact.created_at.desc()).all())
+
+@app.route('/admin/contacts/<int:id>')
+@login_required
+def admin_contact_detail(id):
+    contact = Contact.query.get_or_404(id)
+    if contact.status == 'new':
+        contact.status = 'read'
+        db.session.commit()
+    return render_template('admin/contact_detail.html', contact=contact)
+
+@app.route('/admin/contacts/delete/<int:id>', methods=['POST'])
+@login_required
+def admin_delete_contact(id):
+    db.session.delete(Contact.query.get_or_404(id))
+    db.session.commit()
+    flash('Message supprimé avec succès', 'success')
+    return redirect(url_for('admin_contacts'))
+
+# ---------- Newsletter ----------
+
+@app.route('/admin/newsletter')
+@login_required
+def admin_newsletter():
+    return render_template('admin/newsletter.html', subscribers=NewsletterSubscriber.query.order_by(NewsletterSubscriber.subscribed_at.desc()).all())
+
+@app.route('/admin/newsletter/delete/<int:id>', methods=['POST'])
+@login_required
+def admin_delete_subscriber(id):
+    db.session.delete(NewsletterSubscriber.query.get_or_404(id))
+    db.session.commit()
+    flash('Abonné supprimé avec succès', 'success')
+    return redirect(url_for('admin_newsletter'))
+
+# ---------- Campaigns ----------
+
+@app.route('/admin/campaigns')
+@login_required
+def admin_campaigns():
+    return render_template('admin/campaigns.html', campaigns=Campaign.query.order_by(Campaign.created_at.desc()).all())
+
+@app.route('/admin/campaigns/new', methods=['GET', 'POST'])
+@login_required
+def admin_new_campaign():
+    if request.method == 'POST':
+        campaign = Campaign(
+            title=request.form.get('title'),
+            subject=request.form.get('subject'),
+            content=request.form.get('content'),
+            category=request.form.get('category')
+        )
+        db.session.add(campaign)
+        db.session.commit()
+        flash('Campagne créée avec succès', 'success')
+        return redirect(url_for('admin_campaigns'))
+    return render_template('admin/campaign_form.html')
+
+@app.route('/admin/campaigns/send/<int:id>', methods=['POST'])
+@login_required
+def admin_send_campaign(id):
+    campaign = Campaign.query.get_or_404(id)
+    if campaign.category == 'all':
+        subscribers = NewsletterSubscriber.query.filter_by(status='active').all()
+    else:
+        subscribers = NewsletterSubscriber.query.filter(
+            NewsletterSubscriber.status == 'active',
+            (NewsletterSubscriber.category == campaign.category) |
+            (NewsletterSubscriber.category == 'les_deux')
+        ).all()
+
+    sent_count = sum(1 for s in subscribers if send_newsletter_email(s.email, campaign.subject, campaign.content))
+
+    campaign.status = 'sent'
+    campaign.sent_at = datetime.utcnow()
+    db.session.commit()
+    flash(f'Campagne envoyée à {sent_count} abonnés', 'success')
+    return redirect(url_for('admin_campaigns'))
+
+@app.route('/admin/campaigns/delete/<int:id>', methods=['POST'])
+@login_required
+def admin_delete_campaign(id):
+    db.session.delete(Campaign.query.get_or_404(id))
+    db.session.commit()
+    flash('Campagne supprimée avec succès', 'success')
+    return redirect(url_for('admin_campaigns'))
+
+# ---------- Settings ----------
+
+@app.route('/admin/settings', methods=['GET', 'POST'])
+@login_required
+def admin_settings():
+    if request.method == 'POST':
+        keys = ['site_name', 'phone', 'email', 'address', 'whatsapp',
+                'instagram', 'facebook', 'tiktok', 'meta_description']
+        for key in keys:
+            value = request.form.get(key)
+            setting = Setting.query.filter_by(key=key).first()
+            if setting:
+                setting.value = value
+            else:
+                db.session.add(Setting(key=key, value=value))
+        db.session.commit()
+        flash('Paramètres mis à jour avec succès', 'success')
+        return redirect(url_for('admin_settings'))
+
+    settings = {s.key: s.value for s in Setting.query.all()}
+    return render_template('admin/settings.html', settings=settings)
+
+# ==================== POINT D'ENTRÉE VERCEL ====================
+# Vercel importe directement la variable `app` de ce fichier — rien de plus à faire.
+
+if __name__ == '__main__':
+    app.run(debug=False, host='0.0.0.0', port=5000)

@@ -1,0 +1,77 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Projets - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-content">
+    <div class="content-header">
+        <h1>Gestion des Projets</h1>
+        <a href="{{ url_for('admin_new_project') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nouveau Projet
+        </a>
+    </div>
+
+    {% if projects %}
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Image</th>
+                    <th>Titre</th>
+                    <th>Client</th>
+                    <th>Catégorie</th>
+                    <th>Date</th>
+                    <th>Vedette</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for project in projects %}
+                <tr>
+                    <td>
+                        {% if project.image %}
+                        <img src="{{ project.image }}"
+                             alt="{{ project.title }}" class="table-thumbnail">
+                        {% else %}
+                        <div class="no-image">Pas d'image</div>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ project.title }}</strong></td>
+                    <td>{{ project.client }}</td>
+                    <td>{{ project.category }}</td>
+                    <td>{{ project.date }}</td>
+                    <td>
+                        {% if project.featured %}
+                        <i class="fas fa-star" style="color: #c9a84c;"></i>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="actions-cell">
+                        <a href="{{ url_for('admin_edit_project', id=project.id) }}" 
+                           class="btn btn-sm btn-secondary" title="Modifier">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('admin_delete_project', id=project.id) }}" 
+                              style="display: inline;" 
+                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce projet ?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-film fa-3x"></i>
+        <p>Aucun projet pour le moment</p>
+        <a href="{{ url_for('admin_new_project') }}" class="btn btn-primary">Créer le premier projet</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

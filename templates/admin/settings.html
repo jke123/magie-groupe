@@ -1,0 +1,114 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Paramètres - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-content">
+    <div class="content-header">
+        <h1>Paramètres du Site</h1>
+    </div>
+
+    <div class="settings-sections">
+        <!-- Informations générales -->
+        <div class="settings-card">
+            <h3>Informations Générales</h3>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                    <label for="site_name">Nom du site</label>
+                    <input type="text" id="site_name" name="site_name" 
+                           value="{{ settings.get('site_name', 'Magie Groupe') }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Téléphone</label>
+                    <input type="text" id="phone" name="phone" 
+                           value="{{ settings.get('phone', '') }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" 
+                           value="{{ settings.get('email', '') }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="address">Adresse</label>
+                    <textarea id="address" name="address" rows="3">{{ settings.get('address', '') }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="whatsapp">WhatsApp</label>
+                    <input type="text" id="whatsapp" name="whatsapp" 
+                           value="{{ settings.get('whatsapp', '') }}">
+                </div>
+                
+                <h4 style="margin-top: 2rem;">Réseaux Sociaux</h4>
+                
+                <div class="form-group">
+                    <label for="instagram">Instagram</label>
+                    <input type="url" id="instagram" name="instagram" 
+                           value="{{ settings.get('instagram', '') }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="facebook">Facebook</label>
+                    <input type="url" id="facebook" name="facebook" 
+                           value="{{ settings.get('facebook', '') }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="tiktok">TikTok</label>
+                    <input type="url" id="tiktok" name="tiktok" 
+                           value="{{ settings.get('tiktok', '') }}">
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Enregistrer
+                </button>
+            </form>
+        </div>
+
+        <!-- Sécurité -->
+        <div class="settings-card">
+            <h3>Sécurité</h3>
+            <p>Gérez la sécurité de votre compte administrateur</p>
+            <a href="{{ url_for('admin_change_password') }}" class="btn btn-secondary">
+                <i class="fas fa-key"></i> Changer le Mot de Passe
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.settings-sections {
+    display: grid;
+    gap: 2rem;
+}
+
+.settings-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.settings-card h3 {
+    margin-top: 0;
+    color: #c9a84c;
+    border-bottom: 2px solid #c9a84c;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.settings-card h4 {
+    color: #0a0a0a;
+    margin-bottom: 1rem;
+}
+
+.settings-card p {
+    color: #666;
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}

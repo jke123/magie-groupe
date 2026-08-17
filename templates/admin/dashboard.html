@@ -1,0 +1,45 @@
+{% extends "admin/base.html" %}
+{% block title %}Dashboard - Admin{% endblock %}
+{% block content %}
+
+<div class="content-header">
+    <h1>Tableau de bord</h1>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.products }}</div>
+        <div class="stat-label">Produits</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.projects }}</div>
+        <div class="stat-label">Projets Portfolio</div>
+    </div>
+    <div class="stat-card {% if stats.pending_orders > 0 %}alert{% endif %}">
+        <div class="stat-value">{{ stats.orders }}</div>
+        <div class="stat-label">Commandes ({{ stats.pending_orders }} en attente)</div>
+    </div>
+    <div class="stat-card {% if stats.pending_appointments > 0 %}alert{% endif %}">
+        <div class="stat-value">{{ stats.appointments }}</div>
+        <div class="stat-label">Rendez-vous ({{ stats.pending_appointments }} en attente)</div>
+    </div>
+    <div class="stat-card {% if stats.contacts > 0 %}alert{% endif %}">
+        <div class="stat-value">{{ stats.contacts }}</div>
+        <div class="stat-label">Messages non lus</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.subscribers }}</div>
+        <div class="stat-label">Abonnés Newsletter</div>
+    </div>
+</div>
+
+<div class="content-header">
+    <h1 style="font-size:18px;">Accès rapides</h1>
+</div>
+<div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <a href="{{ url_for('admin_new_product') }}" class="btn btn-gold"><i class="fas fa-plus"></i> Nouveau produit</a>
+    <a href="{{ url_for('admin_new_project') }}" class="btn btn-dark"><i class="fas fa-plus"></i> Nouveau projet</a>
+    <a href="{{ url_for('admin_new_campaign') }}" class="btn btn-outline"><i class="fas fa-paper-plane"></i> Nouvelle campagne</a>
+</div>
+
+{% endblock %}

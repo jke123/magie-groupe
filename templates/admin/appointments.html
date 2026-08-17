@@ -1,0 +1,63 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Rendez-vous - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-content">
+    <div class="content-header">
+        <h1>Gestion des Rendez-vous</h1>
+    </div>
+
+    {% if appointments %}
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Email</th>
+                    <th>Service</th>
+                    <th>Date</th>
+                    <th>Heure</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appointment in appointments %}
+                <tr>
+                    <td><strong>{{ appointment.name }}</strong></td>
+                    <td>{{ appointment.email }}</td>
+                    <td>{{ appointment.service }}</td>
+                    <td>{{ appointment.date }}</td>
+                    <td>{{ appointment.time }}</td>
+                    <td>
+                        <span class="badge badge-{{ appointment.status }}">
+                            {{ appointment.status }}
+                        </span>
+                    </td>
+                    <td class="actions-cell">
+                        <a href="{{ url_for('admin_appointment_detail', id=appointment.id) }}" 
+                           class="btn btn-sm btn-secondary" title="Détails">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('admin_delete_appointment', id=appointment.id) }}" 
+                              style="display: inline;" 
+                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce rendez-vous ?');">
+                            <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-calendar fa-3x"></i>
+        <p>Aucun rendez-vous pour le moment</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

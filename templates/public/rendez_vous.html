@@ -1,0 +1,70 @@
+{% extends "public/base.html" %}
+{% block title %}Rendez-vous - {{ site_name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Prendre Rendez-vous</h1>
+    <p>Planifiez une consultation gratuite avec notre équipe</p>
+</div>
+
+<div style="max-width: 720px; margin: 0 auto;">
+    <div class="info-box">
+        ✦ Notre équipe vous contactera dans les 24h pour confirmer votre rendez-vous.
+    </div>
+
+    <form method="POST" class="form-section">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <h2 class="form-title">Vos informations</h2>
+
+        <div class="form-group">
+            <label for="name">Nom complet <span class="required">*</span></label>
+            <input type="text" id="name" name="name" class="form-control" placeholder="Jean Dupont" required>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="email">Adresse email <span class="required">*</span></label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="jean@exemple.com" required>
+            </div>
+            <div class="form-group">
+                <label for="phone">Téléphone <span class="required">*</span></label>
+                <input type="tel" id="phone" name="phone" class="form-control" placeholder="+33 6 00 00 00 00" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="service">Type de service <span class="required">*</span></label>
+            <select id="service" name="service" class="form-control" required>
+                <option value="">— Sélectionnez un service —</option>
+                <option value="production_video">🎬 Production Vidéo</option>
+                <option value="photographie">📷 Photographie</option>
+                <option value="evenementiel">🎪 Événementiel</option>
+                <option value="consultation">💬 Consultation</option>
+                <option value="autre">📌 Autre</option>
+            </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="date">Date souhaitée <span class="required">*</span></label>
+                <input type="date" id="date" name="date" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="time">Heure souhaitée <span class="required">*</span></label>
+                <input type="time" id="time" name="time" class="form-control" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="message">Message (optionnel)</label>
+            <textarea id="message" name="message" class="form-control" placeholder="Décrivez brièvement votre projet ou vos besoins..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-gold btn-full">Confirmer le rendez-vous →</button>
+    </form>
+</div>
+
+<script>
+document.getElementById('date').min = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}
