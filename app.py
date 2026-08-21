@@ -1,4 +1,5 @@
 import os
+import ssl
 from flask import Flask, render_template, request, redirect, url_for, flash, session, Response, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
@@ -23,14 +24,20 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-this-in-producti
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///local.db')
 if db_url.startswith('postgres://'):
     db_url = db_url.replace('postgres://', 'postgresql://', 1)
-if db_url.startswith('postgresql://'):
-    db_url = db_url.replace('postgresql://', 'postgresql+psycopg://', 1)
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+
+engine_options = {
     'pool_pre_ping': True,
     'pool_recycle': 280,
 }
+
+if db_url.startswith('postgresql://'):
+    db_url = db_url.split('?')[0]
+    db_url = db_url.replace('postgresql://', 'postgresql+pg8000://', 1)
+    engine_options['connect_args'] = {'ssl_context': ssl.create_default_context()}
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = engine_options
 
 # ==================== SÉCURITÉ ====================
 app.config['SESSION_COOKIE_SECURE'] = True       # cookie envoyé uniquement en HTTPS
