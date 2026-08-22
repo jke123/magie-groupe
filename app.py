@@ -856,6 +856,44 @@ def admin_settings():
     settings = {s.key: s.value for s in Setting.query.all()}
     return render_template('admin/settings.html', settings=settings)
 
+# ==================== INITIALISATION BASE DE DONNÉES (TEMPORAIRE) ====================
+# À VISITER UNE SEULE FOIS depuis le navigateur, puis à SUPPRIMER de app.py.
+# URL volontairement longue/aléatoire pour éviter tout accès non désiré.
+
+@app.route('/setup-database-mg2026-x7k9p3')
+def setup_database_once():
+    db.create_all()
+
+    if not User.query.filter_by(username='admin').first():
+        admin = User(
+            username='admin',
+            password_hash=generate_password_hash('MagieGroupe2025!')
+        )
+        db.session.add(admin)
+
+    default_settings = {
+        'site_name': 'Magie Groupe',
+        'phone': '',
+        'email': '',
+        'address': '',
+        'whatsapp': '',
+        'instagram': '',
+        'facebook': '',
+        'tiktok': '',
+        'meta_description': 'Magie Groupe - Production audiovisuelle et boutique en ligne'
+    }
+    for key, value in default_settings.items():
+        if not Setting.query.filter_by(key=key).first():
+            db.session.add(Setting(key=key, value=value))
+
+    db.session.commit()
+    return (
+        "Base de donnees initialisee avec succes. "
+        "Compte admin : admin / MagieGroupe2025! "
+        "IMPORTANT : supprimez maintenant cette route de app.py et changez le mot de passe admin.",
+        200
+    )
+
 # ==================== POINT D'ENTRÉE VERCEL ====================
 # Vercel importe directement la variable `app` de ce fichier — rien de plus à faire.
 
