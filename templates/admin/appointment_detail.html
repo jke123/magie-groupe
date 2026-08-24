@@ -3,26 +3,37 @@
 {% block content %}
 
 <div class="content-header">
-    <h1>Rendez-vous de {{ appointment.name }}</h1>
-    <a href="{{ url_for('admin_appointments') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Retour</a>
+    <h1>
+        <i class="fas fa-calendar" style="color:var(--gold);margin-right:12px;"></i>
+        Rendez-vous de {{ appointment.name }}
+    </h1>
+    <a href="{{ url_for('admin_appointments') }}" class="btn btn-secondary btn-sm">
+        <i class="fas fa-arrow-left"></i> Retour
+    </a>
 </div>
 
 <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;">
+    <!-- DÉTAILS -->
     <div class="admin-form-container">
-        <p><strong>Nom :</strong> {{ appointment.name }}</p>
-        <p><strong>Email :</strong> <a href="mailto:{{ appointment.email }}">{{ appointment.email }}</a></p>
-        <p><strong>Téléphone :</strong> {{ appointment.phone }}</p>
-        <p><strong>Service :</strong> {{ appointment.service }}</p>
-        <p><strong>Date souhaitée :</strong> {{ appointment.date }} à {{ appointment.time }}</p>
+        <p><strong><i class="fas fa-user" style="color:var(--gold);width:24px;"></i> Nom :</strong> {{ appointment.name }}</p>
+        <p><strong><i class="fas fa-envelope" style="color:var(--gold);width:24px;"></i> Email :</strong> <a href="mailto:{{ appointment.email }}">{{ appointment.email }}</a></p>
+        <p><strong><i class="fas fa-phone" style="color:var(--gold);width:24px;"></i> Téléphone :</strong> {{ appointment.phone }}</p>
+        <p><strong><i class="fas fa-tag" style="color:var(--gold);width:24px;"></i> Service :</strong> {{ appointment.service }}</p>
+        <p><strong><i class="fas fa-calendar-day" style="color:var(--gold);width:24px;"></i> Date souhaitée :</strong> {{ appointment.date }} à {{ appointment.time }}</p>
         {% if appointment.message %}
-        <p style="margin-top:16px;"><strong>Message :</strong></p>
+        <p style="margin-top:16px;"><strong><i class="fas fa-comment" style="color:var(--gold);width:24px;"></i> Message :</strong></p>
         <p style="background:var(--bg-2);padding:16px;border-radius:8px;">{{ appointment.message }}</p>
         {% endif %}
-        <p style="margin-top:16px;color:var(--text-light);font-size:13px;">Reçu le {{ appointment.created_at.strftime('%d/%m/%Y à %H:%M') }}</p>
+        <p style="margin-top:16px;color:var(--text-light);font-size:13px;">
+            <i class="fas fa-clock" style="color:var(--gold);"></i> Reçu le {{ appointment.created_at.strftime('%d/%m/%Y à %H:%M') }}
+        </p>
     </div>
 
+    <!-- STATUT -->
     <div class="admin-form-container">
-        <h3 style="margin-bottom:16px;">Statut</h3>
+        <h3 style="margin-bottom:16px;">
+            <i class="fas fa-tasks" style="color:var(--gold);margin-right:8px;"></i> Statut
+        </h3>
         <form method="POST" action="{{ url_for('admin_update_appointment_status', id=appointment.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
@@ -33,13 +44,16 @@
                     <option value="cancelled" {% if appointment.status == 'cancelled' %}selected{% endif %}>Annulé</option>
                 </select>
             </div>
-            <button type="submit" class="btn btn-gold btn-full">Mettre à jour</button>
+            <button type="submit" class="btn btn-gold btn-full">
+                <i class="fas fa-save"></i> Mettre à jour
+            </button>
         </form>
 
-        <form method="POST" action="{{ url_for('admin_delete_appointment', id=appointment.id) }}"
-              onsubmit="return confirm('Supprimer définitivement ce rendez-vous ?');" style="margin-top:16px;">
+        <form method="POST" action="{{ url_for('admin_delete_appointment', id=appointment.id) }}" onsubmit="return confirm('Supprimer définitivement ce rendez-vous ?');" style="margin-top:16px;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-danger btn-full"><i class="fas fa-trash"></i> Supprimer</button>
+            <button type="submit" class="btn btn-danger btn-full">
+                <i class="fas fa-trash"></i> Supprimer
+            </button>
         </form>
     </div>
 </div>

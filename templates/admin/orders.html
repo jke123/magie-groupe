@@ -5,7 +5,7 @@
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
-        <h1>Gestion des Commandes</h1>
+        <h1><i class="fas fa-shopping-cart" style="color:var(--gold);margin-right:12px;"></i> Gestion des Commandes</h1>
     </div>
 
     {% if orders %}
@@ -31,18 +31,16 @@
                     <td>{{ order.total }} €</td>
                     <td>
                         <span class="badge badge-{{ order.status }}">
+                            <i class="fas fa-{{ 'clock' if order.status == 'pending' else 'check-circle' if order.status == 'confirmed' else 'truck' if order.status == 'shipped' else 'home' if order.status == 'delivered' else 'times-circle' }}"></i>
                             {{ order.status }}
                         </span>
                     </td>
                     <td>{{ order.created_at.strftime('%d/%m/%Y') }}</td>
                     <td class="actions-cell">
-                        <a href="{{ url_for('admin_order_detail', id=order.id) }}" 
-                           class="btn btn-sm btn-secondary" title="Détails">
+                        <a href="{{ url_for('admin_order_detail', id=order.id) }}" class="btn btn-sm btn-secondary" title="Détails">
                             <i class="fas fa-eye"></i>
                         </a>
-                        <form method="POST" action="{{ url_for('admin_delete_order', id=order.id) }}" 
-                              style="display: inline;" 
-                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette commande ?');">
+                        <form method="POST" action="{{ url_for('admin_delete_order', id=order.id) }}" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette commande ?');">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
                                 <i class="fas fa-trash"></i>

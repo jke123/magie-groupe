@@ -5,7 +5,7 @@
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
-        <h1>Gestion des Projets</h1>
+        <h1><i class="fas fa-film" style="color:var(--gold);margin-right:12px;"></i> Gestion des Projets</h1>
         <a href="{{ url_for('admin_new_project') }}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Nouveau Projet
         </a>
@@ -30,10 +30,9 @@
                 <tr>
                     <td>
                         {% if project.image %}
-                        <img src="{{ project.image }}"
-                             alt="{{ project.title }}" class="table-thumbnail">
+                        <img src="{{ project.image }}" alt="{{ project.title }}" class="table-thumbnail">
                         {% else %}
-                        <div class="no-image">Pas d'image</div>
+                        <div class="no-image"><i class="fas fa-image" style="color:#ccc;"></i></div>
                         {% endif %}
                     </td>
                     <td><strong>{{ project.title }}</strong></td>
@@ -42,19 +41,16 @@
                     <td>{{ project.date }}</td>
                     <td>
                         {% if project.featured %}
-                        <i class="fas fa-star" style="color: #c9a84c;"></i>
+                        <i class="fas fa-star" style="color: var(--gold);"></i>
                         {% else %}
-                        -
+                        <i class="fas fa-star" style="color: #ddd;"></i>
                         {% endif %}
                     </td>
                     <td class="actions-cell">
-                        <a href="{{ url_for('admin_edit_project', id=project.id) }}" 
-                           class="btn btn-sm btn-secondary" title="Modifier">
+                        <a href="{{ url_for('admin_edit_project', id=project.id) }}" class="btn btn-sm btn-secondary" title="Modifier">
                             <i class="fas fa-edit"></i>
                         </a>
-                        <form method="POST" action="{{ url_for('admin_delete_project', id=project.id) }}" 
-                              style="display: inline;" 
-                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce projet ?');">
+                        <form method="POST" action="{{ url_for('admin_delete_project', id=project.id) }}" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce projet ?');">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
                                 <i class="fas fa-trash"></i>

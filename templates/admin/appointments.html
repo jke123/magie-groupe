@@ -5,7 +5,7 @@
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
-        <h1>Gestion des Rendez-vous</h1>
+        <h1><i class="fas fa-calendar" style="color:var(--gold);margin-right:12px;"></i> Gestion des Rendez-vous</h1>
     </div>
 
     {% if appointments %}
@@ -32,17 +32,15 @@
                     <td>{{ appointment.time }}</td>
                     <td>
                         <span class="badge badge-{{ appointment.status }}">
+                            <i class="fas fa-{{ 'clock' if appointment.status == 'pending' else 'check-circle' if appointment.status == 'confirmed' else 'check-double' if appointment.status == 'completed' else 'times-circle' }}"></i>
                             {{ appointment.status }}
                         </span>
                     </td>
                     <td class="actions-cell">
-                        <a href="{{ url_for('admin_appointment_detail', id=appointment.id) }}" 
-                           class="btn btn-sm btn-secondary" title="Détails">
+                        <a href="{{ url_for('admin_appointment_detail', id=appointment.id) }}" class="btn btn-sm btn-secondary" title="Détails">
                             <i class="fas fa-eye"></i>
                         </a>
-                        <form method="POST" action="{{ url_for('admin_delete_appointment', id=appointment.id) }}" 
-                              style="display: inline;" 
-                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce rendez-vous ?');">
+                        <form method="POST" action="{{ url_for('admin_delete_appointment', id=appointment.id) }}" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce rendez-vous ?');">
                             <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
                                 <i class="fas fa-trash"></i>
                             </button>

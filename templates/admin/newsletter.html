@@ -5,7 +5,7 @@
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
-        <h1>Abonnés Newsletter</h1>
+        <h1><i class="fas fa-users" style="color:var(--gold);margin-right:12px;"></i> Abonnés Newsletter</h1>
         <a href="{{ url_for('admin_campaigns') }}" class="btn btn-primary">
             <i class="fas fa-paper-plane"></i> Campagnes
         </a>
@@ -29,23 +29,22 @@
                     <td><strong>{{ subscriber.email }}</strong></td>
                     <td>
                         {% if subscriber.category == 'audiovisuel' %}
-                        <span class="badge badge-info">Audiovisuel</span>
+                        <span class="badge badge-info"><i class="fas fa-video"></i> Audiovisuel</span>
                         {% elif subscriber.category == 'commerce' %}
-                        <span class="badge badge-success">Commerce</span>
+                        <span class="badge badge-success"><i class="fas fa-store"></i> Commerce</span>
                         {% else %}
-                        <span class="badge badge-primary">Les deux</span>
+                        <span class="badge badge-primary"><i class="fas fa-th"></i> Les deux</span>
                         {% endif %}
                     </td>
                     <td>{{ subscriber.subscribed_at.strftime('%d/%m/%Y') }}</td>
                     <td>
                         <span class="badge badge-{{ subscriber.status }}">
+                            <i class="fas fa-{{ 'check-circle' if subscriber.status == 'active' else 'times-circle' }}"></i>
                             {{ subscriber.status }}
                         </span>
                     </td>
                     <td class="actions-cell">
-                        <form method="POST" action="{{ url_for('admin_delete_subscriber', id=subscriber.id) }}" 
-                              style="display: inline;" 
-                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet abonné ?');">
+                        <form method="POST" action="{{ url_for('admin_delete_subscriber', id=subscriber.id) }}" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet abonné ?');">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
                                 <i class="fas fa-trash"></i>

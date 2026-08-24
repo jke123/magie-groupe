@@ -5,7 +5,7 @@
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
-        <h1>Campagnes Newsletter</h1>
+        <h1><i class="fas fa-paper-plane" style="color:var(--gold);margin-right:12px;"></i> Campagnes Newsletter</h1>
         <a href="{{ url_for('admin_new_campaign') }}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Nouvelle Campagne
         </a>
@@ -31,6 +31,7 @@
                     <td>{{ campaign.category }}</td>
                     <td>
                         <span class="badge badge-{{ campaign.status }}">
+                            <i class="fas fa-{{ 'pencil' if campaign.status == 'draft' else 'paper-plane' }}"></i>
                             {{ campaign.status }}
                         </span>
                     </td>
@@ -39,22 +40,18 @@
                         {% if campaign.sent_at %}
                         {{ campaign.sent_at.strftime('%d/%m/%Y') }}
                         {% else %}
-                        -
+                        <i class="fas fa-minus" style="color:#ccc;"></i>
                         {% endif %}
                     </td>
                     <td class="actions-cell">
                         {% if campaign.status == 'draft' %}
-                        <form method="POST" action="{{ url_for('admin_send_campaign', id=campaign.id) }}" 
-                              style="display: inline;" 
-                              onsubmit="return confirm('Êtes-vous sûr de vouloir envoyer cette campagne ?');">
+                        <form method="POST" action="{{ url_for('admin_send_campaign', id=campaign.id) }}" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir envoyer cette campagne ?');">
                             <button type="submit" class="btn btn-sm btn-primary" title="Envoyer">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
                         </form>
                         {% endif %}
-                        <form method="POST" action="{{ url_for('admin_delete_campaign', id=campaign.id) }}" 
-                              style="display: inline;" 
-                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette campagne ?');">
+                        <form method="POST" action="{{ url_for('admin_delete_campaign', id=campaign.id) }}" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette campagne ?');">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
                                 <i class="fas fa-trash"></i>

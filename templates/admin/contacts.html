@@ -5,7 +5,7 @@
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
-        <h1>Messages de Contact</h1>
+        <h1><i class="fas fa-envelope" style="color:var(--gold);margin-right:12px;"></i> Messages de Contact</h1>
     </div>
 
     {% if contacts %}
@@ -30,17 +30,15 @@
                     <td>{{ contact.created_at.strftime('%d/%m/%Y') }}</td>
                     <td>
                         <span class="badge badge-{{ contact.status }}">
+                            <i class="fas fa-{{ 'envelope' if contact.status == 'new' else 'eye' if contact.status == 'read' else 'reply' }}"></i>
                             {{ contact.status }}
                         </span>
                     </td>
                     <td class="actions-cell">
-                        <a href="{{ url_for('admin_contact_detail', id=contact.id) }}" 
-                           class="btn btn-sm btn-secondary" title="Voir">
+                        <a href="{{ url_for('admin_contact_detail', id=contact.id) }}" class="btn btn-sm btn-secondary" title="Voir">
                             <i class="fas fa-eye"></i>
                         </a>
-                        <form method="POST" action="{{ url_for('admin_delete_contact', id=contact.id) }}" 
-                              style="display: inline;" 
-                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce message ?');">
+                        <form method="POST" action="{{ url_for('admin_delete_contact', id=contact.id) }}" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce message ?');">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
                                 <i class="fas fa-trash"></i>

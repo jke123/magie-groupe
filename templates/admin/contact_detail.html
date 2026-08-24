@@ -3,27 +3,39 @@
 {% block content %}
 
 <div class="content-header">
-    <h1>Message de {{ contact.name }}</h1>
-    <a href="{{ url_for('admin_contacts') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Retour</a>
+    <h1>
+        <i class="fas fa-envelope" style="color:var(--gold);margin-right:12px;"></i>
+        Message de {{ contact.name }}
+    </h1>
+    <a href="{{ url_for('admin_contacts') }}" class="btn btn-secondary btn-sm">
+        <i class="fas fa-arrow-left"></i> Retour
+    </a>
 </div>
 
 <div class="admin-form-container">
-    <p><strong>Nom :</strong> {{ contact.name }}</p>
-    <p><strong>Email :</strong> <a href="mailto:{{ contact.email }}">{{ contact.email }}</a></p>
-    {% if contact.phone %}<p><strong>Téléphone :</strong> {{ contact.phone }}</p>{% endif %}
-    <p><strong>Sujet :</strong> {{ contact.subject }}</p>
+    <p><strong><i class="fas fa-user" style="color:var(--gold);width:24px;"></i> Nom :</strong> {{ contact.name }}</p>
+    <p><strong><i class="fas fa-envelope" style="color:var(--gold);width:24px;"></i> Email :</strong> <a href="mailto:{{ contact.email }}">{{ contact.email }}</a></p>
+    {% if contact.phone %}
+    <p><strong><i class="fas fa-phone" style="color:var(--gold);width:24px;"></i> Téléphone :</strong> {{ contact.phone }}</p>
+    {% endif %}
+    <p><strong><i class="fas fa-tag" style="color:var(--gold);width:24px;"></i> Sujet :</strong> {{ contact.subject }}</p>
 
-    <p style="margin-top:16px;"><strong>Message :</strong></p>
+    <p style="margin-top:16px;"><strong><i class="fas fa-comment" style="color:var(--gold);width:24px;"></i> Message :</strong></p>
     <p style="background:var(--bg-2);padding:16px;border-radius:8px;white-space:pre-wrap;">{{ contact.message }}</p>
 
-    <p style="margin-top:16px;color:var(--text-light);font-size:13px;">Reçu le {{ contact.created_at.strftime('%d/%m/%Y à %H:%M') }}</p>
+    <p style="margin-top:16px;color:var(--text-light);font-size:13px;">
+        <i class="fas fa-clock" style="color:var(--gold);"></i> Reçu le {{ contact.created_at.strftime('%d/%m/%Y à %H:%M') }}
+    </p>
 
     <div class="form-actions">
-        <a href="mailto:{{ contact.email }}?subject=Re: {{ contact.subject }}" class="btn btn-gold"><i class="fas fa-reply"></i> Répondre par email</a>
-        <form method="POST" action="{{ url_for('admin_delete_contact', id=contact.id) }}"
-              onsubmit="return confirm('Supprimer définitivement ce message ?');">
+        <a href="mailto:{{ contact.email }}?subject=Re: {{ contact.subject }}" class="btn btn-gold">
+            <i class="fas fa-reply"></i> Répondre par email
+        </a>
+        <form method="POST" action="{{ url_for('admin_delete_contact', id=contact.id) }}" onsubmit="return confirm('Supprimer définitivement ce message ?');" style="display:inline;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Supprimer</button>
+            <button type="submit" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Supprimer
+            </button>
         </form>
     </div>
 </div>
