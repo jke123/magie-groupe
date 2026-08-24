@@ -21,7 +21,6 @@
     <meta name="description" content="{{ site_settings.get('meta_description', 'Magie Groupe - Production audiovisuelle et boutique en ligne') }}">
 </head>
 <body>
-
 <!-- MOBILE MENU OVERLAY -->
 <div class="mobile-menu" id="mobileMenu">
     <div class="mobile-menu-header">
@@ -51,7 +50,7 @@
 <header class="header">
     <div class="header-main">
         <a href="{{ url_for('index') }}" class="logo">
-            <img src="{{ url_for('static', filename='images/logo.webp') }}" 
+            <img src="{{ url_for('static', filename='image/logo.png') }}" 
                  alt="Magie Groupe" 
                  class="logo-img">
         </a>
@@ -73,7 +72,16 @@
         </div>
     </div>
 </nav>
+<!-- PANIER FLOTTANT (visible sauf sur panier et checkout) -->
+{% if request.endpoint not in ['panier', 'checkout'] %}
+<div class="floating-cart" id="floatingCart" onclick="window.location.href='{{ url_for('panier') }}'">
+    <i class="fas fa-shopping-cart"></i>
+    <span class="cart-badge" id="cartBadge">0</span>
+</div>
+{% endif %}
 
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
 <!-- MAIN CONTENT -->
 <main class="main">
     <div class="container">
@@ -192,6 +200,53 @@ async function subscribeNewsletter(e) {
     } catch {
         alert('Erreur lors de l\'abonnement');
     }
+}
+
+// ==================== PANIER FLOTTANT ====================
+function updateFloatingCartBadge() {
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const badge = document.getElementById('cartBadge');
+    if (badge) {
+        badge.textContent = count;
+        // Animation "pop" quand le badge change
+        badge.classList.remove('pop');
+        void badge.offsetWidth; // Force reflow pour rejouer l'animation
+        badge.classList.add('pop');
+    }
+}
+
+// Appel initial
+updateFloatingCartBadge();
+
+// Fonction globale pour mettre à jour le panier depuis n'importe quelle page
+window.updateCartDisplay = function() {
+    updateFloatingCartBadge();
+};
+
+// ==================== TOAST ====================
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    
+    const iconMap = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        info: 'fa-info-circle'
+    };
+    
+    toast.innerHTML = `<i class="fas ${iconMap[type] || iconMap.success}" style="margin-right:12px;color:var(--gold);"></i> ${message}`;
+    container.appendChild(toast);
+    
+    requestAnimationFrame(() => toast.classList.add('show'));
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400);
+    }, 3500);
 }
 </script>
 
