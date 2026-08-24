@@ -9,17 +9,44 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from functools import wraps
 from itsdangerous import URLSafeTimedSerializer
+from jinja2 import ChoiceLoader, DictLoader
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import cloudinary
 import cloudinary.uploader
 
+from templates_data import TEMPLATES
+from static_data import STATIC_FILES
+
 app = Flask(
     __name__,
     template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'),
     static_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 )
+
+# Les templates sont d'abord cherchés sur le disque (fonctionne en local),
+# puis dans TEMPLATES embarqué en dur si le fichier n'existe pas sur le disque
+# (garantit le fonctionnement sur Vercel même si le dossier templates/ n'est pas empaqueté).
+app.jinja_loader = ChoiceLoader([
+    app.jinja_loader,
+    DictLoader(TEMPLATES)
+])
+
+def embedded_static(filename):
+    """Sert les fichiers CSS/JS embarqués si le fichier n'est pas trouvé sur le disque."""
+    disk_path = os.path.join(app.static_folder, filename)
+    if os.path.exists(disk_path):
+        return app.send_static_file(filename)
+    if filename in STATIC_FILES:
+        ext = filename.rsplit('.', 1)[-1] if '.' in filename else ''
+        mime = 'text/css' if ext == 'css' else 'application/javascript' if ext == 'js' else 'text/plain'
+        return Response(STATIC_FILES[filename], mimetype=mime)
+    return "Not Found", 404
+
+# Remplace la vue de la route 'static' déjà enregistrée automatiquement par Flask,
+# plutôt que d'en créer une nouvelle (éviterait un conflit de route).
+app.view_functions['static'] = embedded_static
 
 # ==================== CONFIG GÉNÉRALE ====================
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-this-in-production')
@@ -35,7 +62,6 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_recycle': 280,
 }
-
 
 # ==================== SÉCURITÉ ====================
 app.config['SESSION_COOKIE_SECURE'] = True       # cookie envoyé uniquement en HTTPS
