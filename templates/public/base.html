@@ -4,25 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ site_name }}{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    {% block extra_css %}{% endblock %}
+    
+    <!-- Font Awesome (icônes) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/enhancements.css') }}">
-<meta name="description" content="{{ site_settings.get('meta_description', 'Magie Groupe - Production audiovisuelle et boutique en ligne') }}">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/enhancements.css') }}">
+    {% block extra_css %}{% endblock %}
+    
+    <meta name="description" content="{{ site_settings.get('meta_description', 'Magie Groupe - Production audiovisuelle et boutique en ligne') }}">
 </head>
 <body>
 
 <!-- MOBILE MENU OVERLAY -->
 <div class="mobile-menu" id="mobileMenu">
     <div class="mobile-menu-header">
-        <div class="logo">
-            <div class="logo-main">MAGIE <span>GROUPE</span></div>
-            <div class="logo-sub">Production</div>
-        </div>
-        <button class="mobile-menu-close" onclick="closeMobileMenu()">✕</button>
+        <img src="{{ url_for('static', filename='images/logo.webp') }}" 
+             alt="Magie Groupe" 
+             style="height: 40px; width: auto; display: block;">
+        <button class="mobile-menu-close" onclick="closeMobileMenu()">
+            <i class="fas fa-times"></i>
+        </button>
     </div>
     <nav class="mobile-nav-links">
         <a href="{{ url_for('index') }}" onclick="closeMobileMenu()">Accueil</a>
@@ -33,26 +41,23 @@
         <a href="{{ url_for('panier') }}" onclick="closeMobileMenu()">Panier</a>
     </nav>
     <div class="mobile-contact-info">
-        <a href="tel:{{ site_phone }}">📞 {{ site_phone }}</a>
-        <a href="https://wa.me/{{ site_whatsapp.replace('+','').replace(' ','') }}" target="_blank">💬 WhatsApp</a>
-        <a href="mailto:{{ site_email }}">✉️ {{ site_email }}</a>
+        <a href="tel:{{ site_phone }}"><i class="fas fa-phone"></i> {{ site_phone }}</a>
+        <a href="https://wa.me/{{ site_whatsapp.replace('+','').replace(' ','') }}" target="_blank"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+        <a href="mailto:{{ site_email }}"><i class="fas fa-envelope"></i> {{ site_email }}</a>
     </div>
 </div>
 
-<!-- HEADER -->
+<!-- HEADER (uniquement logo + hamburger) -->
 <header class="header">
-    <div class="header-top">
-        Production Audiovisuelle &amp; Commerce de Qualité — Paris, France
-    </div>
     <div class="header-main">
         <a href="{{ url_for('index') }}" class="logo">
-            <div class="logo-main">MAGIE <span>GROUPE</span></div>
-            <div class="logo-sub">Production</div>
+            <img src="{{ url_for('static', filename='images/logo.webp') }}" 
+                 alt="Magie Groupe" 
+                 class="logo-img">
         </a>
-        <div class="header-contact">
-            <a href="tel:{{ site_phone }}">📞 {{ site_phone }}</a>
-            <a href="https://wa.me/{{ site_whatsapp.replace('+','').replace(' ','') }}" target="_blank" class="whatsapp-btn">💬 WhatsApp</a>
-        </div>
+        <button class="hamburger" id="hamburger" onclick="openMobileMenu()" aria-label="Menu">
+            <span></span><span></span><span></span>
+        </button>
     </div>
 </header>
 
@@ -66,14 +71,6 @@
             <a href="{{ url_for('rendez_vous') }}" {% if request.endpoint == 'rendez_vous' %}class="active"{% endif %}>Rendez-vous</a>
             <a href="{{ url_for('contact') }}" {% if request.endpoint == 'contact' %}class="active"{% endif %}>Contact</a>
         </div>
-        <div class="nav-cart">
-            <a href="{{ url_for('panier') }}" class="cart-link" {% if request.endpoint in ['panier','checkout'] %}style="color: var(--gold) !important;"{% endif %}>
-                🛒 <span id="cartLabel">Panier</span>
-            </a>
-            <button class="hamburger" id="hamburger" onclick="openMobileMenu()" aria-label="Menu">
-                <span></span><span></span><span></span>
-            </button>
-        </div>
     </div>
 </nav>
 
@@ -84,6 +81,7 @@
             {% if messages %}
                 {% for category, message in messages %}
                     <div class="alert alert-{{ 'success' if category == 'success' else 'error' if category == 'error' else 'info' }}">
+                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' if category == 'error' else 'info-circle' }}"></i>
                         {{ message }}
                     </div>
                 {% endfor %}
@@ -97,37 +95,38 @@
 <footer class="footer">
     <div class="footer-grid">
         <div class="footer-brand">
-            <div class="logo-main">MAGIE <span style="color:var(--gold)">GROUPE</span></div>
-            <div class="logo-sub" style="color:var(--gray);letter-spacing:4px;font-size:10px;text-transform:uppercase;margin-bottom:20px;">Production</div>
+            <img src="{{ url_for('static', filename='images/logo.webp') }}" 
+                 alt="Magie Groupe" 
+                 style="height: 38px; width: auto; display: block; margin-bottom: 16px;">
             <p>Production audiovisuelle &amp; Commerce de qualité.</p>
-            <p>📍 {{ site_address }}</p>
-            <p>📞 {{ site_phone }}</p>
-            <p>✉️ {{ site_email }}</p>
+            <p><i class="fas fa-location-dot" style="width:20px;color:var(--gold);"></i> {{ site_address }}</p>
+            <p><i class="fas fa-phone" style="width:20px;color:var(--gold);"></i> {{ site_phone }}</p>
+            <p><i class="fas fa-envelope" style="width:20px;color:var(--gold);"></i> {{ site_email }}</p>
             <div class="footer-social">
-                {% if social_tiktok %}<a href="{{ social_tiktok }}" target="_blank" class="social-link">TikTok</a>{% endif %}
-                {% if social_instagram %}<a href="{{ social_instagram }}" target="_blank" class="social-link">Instagram</a>{% endif %}
-                {% if social_facebook %}<a href="{{ social_facebook }}" target="_blank" class="social-link">Facebook</a>{% endif %}
+                {% if social_tiktok %}<a href="{{ social_tiktok }}" target="_blank" class="social-link"><i class="fab fa-tiktok"></i> TikTok</a>{% endif %}
+                {% if social_instagram %}<a href="{{ social_instagram }}" target="_blank" class="social-link"><i class="fab fa-instagram"></i> Instagram</a>{% endif %}
+                {% if social_facebook %}<a href="{{ social_facebook }}" target="_blank" class="social-link"><i class="fab fa-facebook-f"></i> Facebook</a>{% endif %}
             </div>
         </div>
         <div>
             <h4>Navigation</h4>
             <nav>
-                <a href="{{ url_for('index') }}">Accueil</a>
-                <a href="{{ url_for('produits') }}">Produits</a>
-                <a href="{{ url_for('portfolio') }}">Portfolio</a>
-                <a href="{{ url_for('rendez_vous') }}">Rendez-vous</a>
-                <a href="{{ url_for('contact') }}">Contact</a>
-                <a href="{{ url_for('panier') }}">Panier</a>
+                <a href="{{ url_for('index') }}"><i class="fas fa-chevron-right" style="font-size:10px;color:var(--gold);"></i> Accueil</a>
+                <a href="{{ url_for('produits') }}"><i class="fas fa-chevron-right" style="font-size:10px;color:var(--gold);"></i> Produits</a>
+                <a href="{{ url_for('portfolio') }}"><i class="fas fa-chevron-right" style="font-size:10px;color:var(--gold);"></i> Portfolio</a>
+                <a href="{{ url_for('rendez_vous') }}"><i class="fas fa-chevron-right" style="font-size:10px;color:var(--gold);"></i> Rendez-vous</a>
+                <a href="{{ url_for('contact') }}"><i class="fas fa-chevron-right" style="font-size:10px;color:var(--gold);"></i> Contact</a>
+                <a href="{{ url_for('panier') }}"><i class="fas fa-chevron-right" style="font-size:10px;color:var(--gold);"></i> Panier</a>
             </nav>
         </div>
         <div>
             <h4>Services</h4>
             <nav>
-                <a href="{{ url_for('rendez_vous') }}">Production Vidéo</a>
-                <a href="{{ url_for('rendez_vous') }}">Photographie</a>
-                <a href="{{ url_for('rendez_vous') }}">Événementiel</a>
-                <a href="{{ url_for('produits') }}">Commerce</a>
-                <a href="{{ url_for('contact') }}">Consultation</a>
+                <a href="{{ url_for('rendez_vous') }}"><i class="fas fa-chevron-right" style="font-size:10px;color:var(--gold);"></i> Production Vidéo</a>
+                <a href="{{ url_for('rendez_vous') }}"><i class="fas fa-chevron-right" style="font-size:10px;color:var(--gold);"></i> Photographie</a>
+                <a href="{{ url_for('rendez_vous') }}"><i class="fas fa-chevron-right" style="font-size:10px;color:var(--gold);"></i> Événementiel</a>
+                <a href="{{ url_for('produits') }}"><i class="fas fa-chevron-right" style="font-size:10px;color:var(--gold);"></i> Commerce</a>
+                <a href="{{ url_for('contact') }}"><i class="fas fa-chevron-right" style="font-size:10px;color:var(--gold);"></i> Consultation</a>
             </nav>
         </div>
         <div>
@@ -142,7 +141,7 @@
                         <option value="audiovisuel">Audiovisuel</option>
                         <option value="commerce">Commerce</option>
                     </select>
-                    <button type="submit" class="nl-btn">S'abonner gratuitement</button>
+                    <button type="submit" class="nl-btn"><i class="fas fa-paper-plane" style="margin-right:8px;"></i> S'abonner</button>
                 </form>
             </div>
         </div>
@@ -153,6 +152,7 @@
     </div>
 </footer>
 
+<!-- SCRIPTS -->
 <script>
 // ==================== MOBILE MENU ====================
 function openMobileMenu() {
@@ -167,22 +167,9 @@ function closeMobileMenu() {
     document.body.style.overflow = '';
 }
 
-// Fermer si on clique en dehors
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeMobileMenu();
 });
-
-// ==================== PANIER ====================
-function updateCartDisplay() {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-    const label = document.getElementById('cartLabel');
-    if (label && count > 0) {
-        label.textContent = 'Panier (' + count + ')';
-    }
-}
-
-updateCartDisplay();
 
 // ==================== NEWSLETTER ====================
 async function subscribeNewsletter(e) {
@@ -207,9 +194,13 @@ async function subscribeNewsletter(e) {
     }
 }
 </script>
+
 {% block extra_js %}{% endblock %}
-    <div class="page-loader"><div class="spinner"></div></div>
+
+<!-- Loader + back-to-top -->
+<div class="page-loader"><div class="spinner"></div></div>
 <button class="back-to-top" aria-label="Retour en haut"><i class="fas fa-arrow-up"></i></button>
 <script src="{{ url_for('static', filename='js/animations.js') }}"></script>
+
 </body>
-</html>
+    </html>
