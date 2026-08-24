@@ -2,44 +2,71 @@
 {% block title %}{{ product.name }} - {{ site_name }}{% endblock %}
 {% block content %}
 
-<div class="page-header">
+<div class="page-header" style="text-align:left;border-bottom:none;padding-bottom:0;">
+    <a href="{{ url_for('produits') }}" class="btn btn-outline-gold" style="font-size:12px;padding:8px 20px;margin-bottom:20px;display:inline-flex;align-items:center;gap:8px;">
+        <i class="fas fa-arrow-left"></i> Retour aux produits
+    </a>
     <h1>{{ product.name }}</h1>
-    <p><a href="{{ url_for('produits') }}" style="color:var(--gold);">← Retour aux produits</a></p>
 </div>
 
-<div class="product-detail-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:40px;">
+<div class="product-detail-grid">
+    <!-- IMAGE -->
     <div>
         {% if product.image %}
-        <img src="{{ product.image }}" alt="{{ product.name }}" style="width:100%;border-radius:var(--radius);box-shadow:var(--shadow);">
+        <img src="{{ product.image }}" alt="{{ product.name }}" style="width:100%;border-radius:var(--radius);box-shadow:var(--shadow-lg);">
         {% else %}
-        <div class="card-img-placeholder" style="height:400px;">🛍️</div>
+        <div class="card-img-placeholder" style="height:400px;">
+            <i class="fas fa-shopping-bag" style="font-size:64px;color:var(--gray);"></i>
+        </div>
         {% endif %}
     </div>
+
+    <!-- INFOS -->
     <div>
-        <span class="badge badge-gold">{{ product.category }}</span>
-        <h2 style="margin:16px 0;">{{ product.name }}</h2>
-        <p style="font-size:28px;color:var(--gold-dark);font-weight:600;margin-bottom:16px;">{{ product.price }} €</p>
+        <span class="badge badge-gold">
+            <i class="fas fa-tag"></i> {{ product.category }}
+        </span>
+        
+        <h2 style="margin:16px 0;font-family:'Cormorant Garamond',serif;font-size:32px;">{{ product.name }}</h2>
+        
+        <p style="font-size:28px;color:var(--gold-dark);font-weight:600;margin-bottom:16px;">
+            {{ product.price }} €
+        </p>
 
         {% if product.stock > 0 %}
-        <span class="badge badge-success">En stock ({{ product.stock }} disponibles)</span>
+        <span class="badge badge-success" style="font-size:14px;padding:8px 16px;">
+            <i class="fas fa-check-circle"></i> En stock ({{ product.stock }} disponibles)
+        </span>
         {% else %}
-        <span class="badge badge-danger">Rupture de stock</span>
+        <span class="badge badge-danger" style="font-size:14px;padding:8px 16px;">
+            <i class="fas fa-times-circle"></i> Rupture de stock
+        </span>
         {% endif %}
 
-        <p style="margin:24px 0;color:var(--text-light);line-height:1.8;">{{ product.description }}</p>
+        <p style="margin:24px 0;color:var(--text-light);line-height:1.8;font-size:15px;">
+            {{ product.description }}
+        </p>
 
         {% if product.location %}
-        <p style="margin-bottom:24px;">📍 {{ product.location }}</p>
+        <p style="margin-bottom:24px;display:flex;align-items:center;gap:8px;color:var(--text-light);">
+            <i class="fas fa-location-dot" style="color:var(--gold);"></i> {{ product.location }}
+        </p>
         {% endif %}
 
         {% if product.stock > 0 %}
-        <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;">
-            <label for="qty">Quantité :</label>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+            <label for="qty" style="font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--text-light);">
+                <i class="fas fa-hashtag" style="color:var(--gold);"></i> Quantité :
+            </label>
             <input type="number" id="qty" value="1" min="1" max="{{ product.stock }}" class="form-control" style="width:80px;">
         </div>
-        <button onclick="addToCart()" class="btn btn-gold btn-full">Ajouter au panier 🛒</button>
+        <button onclick="addToCart()" class="btn btn-gold btn-full" style="font-size:15px;padding:16px;">
+            <i class="fas fa-cart-plus"></i> Ajouter au panier
+        </button>
         {% else %}
-        <button class="btn btn-full" disabled style="opacity:0.5;cursor:not-allowed;">Rupture de stock</button>
+        <button class="btn btn-full" disabled style="opacity:0.5;cursor:not-allowed;background:var(--gray);color:var(--white);padding:16px;">
+            <i class="fas fa-times-circle"></i> Rupture de stock
+        </button>
         {% endif %}
     </div>
 </div>
@@ -63,7 +90,19 @@ function addToCart() {
     }
 
     localStorage.setItem('cart', JSON.stringify(cart));
-    alert('Produit ajouté au panier !');
+    
+    // Mettre à jour le badge du panier flottant
+    if (window.updateFloatingCartBadge) window.updateFloatingCartBadge();
+    if (window.updateCartDisplay) window.updateCartDisplay();
+    
+    // Toast notification
+    if (window.showToast) {
+        window.showToast({{ product.name|tojson }} + ' ajouté au panier', 'success');
+    } else {
+        alert('Produit ajouté au panier !');
+    }
+    
+    // Redirection vers le panier
     window.location.href = "{{ url_for('panier') }}";
 }
 </script>

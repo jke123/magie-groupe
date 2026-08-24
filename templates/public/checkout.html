@@ -3,12 +3,28 @@
 {% block content %}
 
 <div class="page-header">
-    <h1>Finaliser la commande</h1>
+    <h1><i class="fas fa-clipboard-check" style="color:var(--gold);margin-right:12px;"></i> Finaliser la commande</h1>
+</div>
+
+<!-- BADGES DE CONFIANCE -->
+<div style="display:flex;gap:24px;justify-content:center;margin-bottom:40px;flex-wrap:wrap;">
+    <span style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);">
+        <i class="fas fa-lock" style="color:var(--gold);"></i> Paiement sécurisé
+    </span>
+    <span style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);">
+        <i class="fas fa-truck" style="color:var(--gold);"></i> Livraison rapide
+    </span>
+    <span style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-light);">
+        <i class="fas fa-credit-card" style="color:var(--gold);"></i> Paiement à la livraison
+    </span>
 </div>
 
 <div class="contact-grid">
+    <!-- FORMULAIRE -->
     <div class="form-section">
-        <h2 class="form-title">Vos informations</h2>
+        <h2 class="form-title">
+            <i class="fas fa-user" style="color:var(--gold);margin-right:12px;"></i> Vos informations
+        </h2>
         <form method="POST" id="checkoutForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="items" id="itemsInput">
@@ -16,33 +32,41 @@
 
             <div class="form-group">
                 <label for="name">Nom complet <span class="required">*</span></label>
-                <input type="text" id="name" name="name" class="form-control" required>
+                <input type="text" id="name" name="name" class="form-control" placeholder="Jean Dupont" required>
             </div>
+            
             <div class="form-group">
-                <label for="email">Email <span class="required">*</span></label>
-                <input type="email" id="email" name="email" class="form-control" required>
+                <label for="email">Adresse email <span class="required">*</span></label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="jean@exemple.com" required>
             </div>
+            
             <div class="form-group">
                 <label for="phone">Téléphone <span class="required">*</span></label>
                 <input type="tel" id="phone" name="phone" class="form-control" placeholder="+33 6 00 00 00 00" required>
             </div>
+            
             <div class="form-group">
                 <label for="address">Adresse de livraison <span class="required">*</span></label>
-                <textarea id="address" name="address" class="form-control" rows="3" required></textarea>
+                <textarea id="address" name="address" class="form-control" rows="3" placeholder="Votre adresse complète..." required></textarea>
             </div>
 
-            <button type="submit" class="btn btn-gold btn-full" id="submitBtn">Confirmer la commande →</button>
-            <p style="margin-top:12px;font-size:12px;color:var(--gray);text-align:center;">
-                Paiement à la livraison / sur convention pour le moment. Le paiement en ligne sera bientôt disponible.
+            <button type="submit" class="btn btn-gold btn-full" id="submitBtn">
+                <i class="fas fa-check-circle"></i> Confirmer la commande
+            </button>
+            
+            <p style="margin-top:16px;font-size:12px;color:var(--text-light);text-align:center;">
+                <i class="fas fa-info-circle" style="color:var(--gold);"></i>
+                Paiement à la livraison / sur convention. Le paiement en ligne sera bientôt disponible.
             </p>
         </form>
     </div>
 
+    <!-- RÉCAPITULATIF -->
     <div class="contact-info-box">
-        <h2>Récapitulatif</h2>
-        <div id="summaryItems"></div>
-        <div style="display:flex;justify-content:space-between;margin-top:24px;padding-top:24px;border-top:1px solid rgba(201,168,76,0.2);font-size:20px;font-weight:600;">
-            <span>Total</span>
+        <h2><i class="fas fa-receipt" style="color:var(--gold);margin-right:12px;"></i> Récapitulatif</h2>
+        <div id="summaryItems" style="margin-bottom:24px;"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:24px;padding-top:24px;border-top:1px solid rgba(201,168,76,0.2);font-size:22px;font-weight:600;color:var(--white);">
+            <span><i class="fas fa-euro-sign" style="color:var(--gold);"></i> Total</span>
             <span id="summaryTotal">0 €</span>
         </div>
     </div>
@@ -52,6 +76,7 @@
 const cart = JSON.parse(localStorage.getItem('cart') || '[]');
 
 if (cart.length === 0) {
+    // Redirection vers le panier si vide
     window.location.href = "{{ url_for('panier') }}";
 }
 
@@ -60,8 +85,11 @@ const summaryContainer = document.getElementById('summaryItems');
 cart.forEach(item => {
     total += item.price * item.quantity;
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;justify-content:space-between;margin-bottom:10px;color:rgba(255,255,255,0.85);font-size:14px;';
-    row.innerHTML = `<span>${item.name} × ${item.quantity}</span><span>${(item.price * item.quantity).toFixed(2)} €</span>`;
+    row.style.cssText = 'display:flex;justify-content:space-between;margin-bottom:12px;color:rgba(255,255,255,0.85);font-size:14px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);';
+    row.innerHTML = `
+        <span><i class="fas fa-cube" style="color:var(--gold);margin-right:8px;"></i> ${item.name} × ${item.quantity}</span>
+        <span>${(item.price * item.quantity).toFixed(2)} €</span>
+    `;
     summaryContainer.appendChild(row);
 });
 
@@ -70,9 +98,11 @@ document.getElementById('totalInput').value = total.toFixed(2);
 document.getElementById('itemsInput').value = JSON.stringify(cart);
 
 document.getElementById('checkoutForm').addEventListener('submit', function () {
-    document.getElementById('submitBtn').disabled = true;
-    document.getElementById('submitBtn').textContent = 'Traitement en cours...';
-    // Le panier sera vidé après confirmation, sur la page de succès
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Traitement en cours...';
+    
+    // Sauvegarder le panier pour la page de succès
     localStorage.setItem('cart_pending', localStorage.getItem('cart'));
 });
 </script>

@@ -1,99 +1,47 @@
 {% extends "public/base.html" %}
 
-{% block title %}Désabonnement - Magie Groupe{% endblock %}
+{% block title %}Désabonnement - {{ site_name }}{% endblock %}
 
 {% block content %}
-<section class="page-hero">
-    <div class="container">
-        <h1>Désabonnement Newsletter</h1>
-        <p>Gestion de votre abonnement</p>
+<div style="max-width:600px;margin:60px auto;text-align:center;padding:40px 20px;background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-lg);border:1px solid var(--border);">
+    <!-- ICÔNE DE SUCCÈS -->
+    <div style="font-size:72px;margin-bottom:24px;color:#2ecc71;">
+        <i class="fas fa-check-circle"></i>
     </div>
-</section>
+    
+    <h1 style="font-family:'Cormorant Garamond',serif;font-size:32px;color:var(--black);margin-bottom:12px;">
+        Désabonnement confirmé
+    </h1>
+    
+    <p style="color:var(--text-light);font-size:16px;line-height:1.8;margin-bottom:24px;">
+        Vous avez été désabonné avec succès de notre newsletter.
+    </p>
+    
+    <p style="color:var(--text-light);font-size:14px;line-height:1.7;margin-bottom:32px;">
+        <i class="fas fa-heart" style="color:var(--gold);margin-right:6px;"></i>
+        Nous sommes désolés de vous voir partir. Si vous changez d'avis, vous pouvez vous réabonner à tout moment depuis notre page d'accueil.
+    </p>
+    
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <a href="{{ url_for('index') }}" class="btn btn-gold">
+            <i class="fas fa-home"></i> Retour à l'accueil
+        </a>
+        <a href="{{ url_for('contact') }}" class="btn btn-outline-gold">
+            <i class="fas fa-envelope"></i> Nous contacter
+        </a>
+    </div>
+</div>
 
-<section class="unsubscribe-section">
-    <div class="container">
-        <div class="unsubscribe-content">
-            <i class="fas fa-check-circle success-icon"></i>
-            <h2>Désabonnement Confirmé</h2>
-            <p>Vous avez été désabonné avec succès de notre newsletter.</p>
-            <p>Nous sommes désolés de vous voir partir. Si vous changez d'avis, vous pouvez vous réabonner à tout moment depuis notre page d'accueil.</p>
-            
-            <div class="unsubscribe-actions">
-                <a href="{{ url_for('index') }}" class="btn btn-primary">Retour à l'accueil</a>
-                <a href="{{ url_for('contact') }}" class="btn btn-secondary">Nous contacter</a>
-            </div>
-        </div>
-    </div>
-</section>
+<!-- Petit message supplémentaire pour rassurer -->
+<div style="max-width:600px;margin:0 auto 60px;text-align:center;">
+    <p style="font-size:12px;color:var(--text-light);">
+        <i class="fas fa-lock" style="color:var(--gold);margin-right:6px;"></i>
+        Vos données ont été supprimées de notre liste d'envoi.
+    </p>
+</div>
 
 <style>
-.page-hero {
-    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-    color: white;
-    padding: 4rem 0;
-    text-align: center;
-}
-
-.page-hero h1 {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-    color: #c9a84c;
-}
-
-.page-hero p {
-    font-size: 1.2rem;
-    color: #e0e0e0;
-}
-
-.unsubscribe-section {
-    padding: 4rem 0;
-    background: #f5f3ee;
-}
-
-.unsubscribe-content {
-    max-width: 600px;
-    margin: 0 auto;
-    background: white;
-    padding: 3rem;
-    border-radius: 10px;
-    text-align: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.success-icon {
-    font-size: 4rem;
-    color: #10b981;
-    margin-bottom: 1.5rem;
-}
-
-.unsubscribe-content h2 {
-    font-size: 2rem;
-    color: #0a0a0a;
-    margin-bottom: 1rem;
-}
-
-.unsubscribe-content p {
-    color: #666;
-    font-size: 1.1rem;
-    line-height: 1.6;
-    margin-bottom: 1rem;
-}
-
-.unsubscribe-actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    margin-top: 2rem;
-}
-
-@media (max-width: 768px) {
-    .unsubscribe-actions {
-        flex-direction: column;
-    }
-    
-    .unsubscribe-actions .btn {
-        width: 100%;
-    }
-}
+/* Ces styles sont déjà dans le thème, on les surcharge juste pour la page */
 </style>
+
 {% endblock %}
