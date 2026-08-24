@@ -2,45 +2,60 @@
 {% block title %}{{ site_name }} - Production Audiovisuelle & Commerce{% endblock %}
 {% block content %}
 
-<!-- HERO -->
+<!-- ===== HERO ===== -->
 <section class="hero">
-    <div class="product-card reveal">...</div>
-    <div class="hero-label">✦ Bienvenue chez Magie Groupe Production</div>
-    <h1>L'Excellence<br><span>Audiovisuelle</span><br>& Commerciale</h1>
-    <p>Nous créons des expériences visuelles mémorables et proposons des produits de qualité supérieure. Votre vision, notre expertise.</p>
+    <div class="hero-label">
+        <i class="fas fa-star" style="color:var(--gold);margin-right:8px;"></i>
+        Magie Groupe — Là où vos idées prennent vie
+    </div>
+    <h1>Production Audiovisuelle<br><span>&amp; Commerce</span><br>d'Exception</h1>
+    <p>Nous donnons vie à vos projets avec une exigence créative sans compromis. De la conception à la livraison, faites de chaque instant un moment unique.</p>
     <div class="hero-btns">
-        <a href="{{ url_for('portfolio') }}" class="btn btn-gold">Voir notre portfolio</a>
-        <a href="{{ url_for('rendez_vous') }}" class="btn btn-outline-gold">Prendre rendez-vous</a>
+        <a href="{{ url_for('portfolio') }}" class="btn btn-gold">
+            <i class="fas fa-arrow-right"></i> Découvrir nos réalisations
+        </a>
+        <a href="{{ url_for('rendez_vous') }}" class="btn btn-outline-gold">
+            <i class="fas fa-calendar-check"></i> Prendre rendez-vous
+        </a>
     </div>
 </section>
 
-<!-- STATS -->
+<!-- ===== STATISTIQUES ===== -->
 <div class="stats">
     <div class="stat-card">
-        <div class="stat-value">500+</div>
+        <div class="stat-value">
+            <i class="fas fa-film" style="color:var(--gold);font-size:32px;margin-right:8px;"></i>500+
+        </div>
         <div class="stat-label">Projets réalisés</div>
     </div>
     <div class="stat-card">
-        <div class="stat-value">200+</div>
+        <div class="stat-value">
+            <i class="fas fa-users" style="color:var(--gold);font-size:32px;margin-right:8px;"></i>200+
+        </div>
         <div class="stat-label">Clients satisfaits</div>
     </div>
     <div class="stat-card">
-        <div class="stat-value">1000+</div>
+        <div class="stat-value">
+            <i class="fas fa-box" style="color:var(--gold);font-size:32px;margin-right:8px;"></i>1000+
+        </div>
         <div class="stat-label">Produits disponibles</div>
     </div>
     <div class="stat-card">
-        <div class="stat-value">5★</div>
+        <div class="stat-value">
+            <i class="fas fa-star" style="color:var(--gold);font-size:32px;margin-right:8px;"></i>5★
+        </div>
         <div class="stat-label">Note moyenne</div>
     </div>
 </div>
 
-<!-- PROJETS EN VEDETTE -->
+<!-- ===== PROJETS EN VEDETTE ===== -->
 {% if featured_projects %}
 <section style="margin-bottom: 80px;">
-    <div class="product-card reveal">...</div>
     <div class="section-header">
-        <span class="section-label">Notre travail</span>
-        <h2 class="section-title">Projets en Vedette</h2>
+        <span class="section-label">
+            <i class="fas fa-play" style="margin-right:6px;"></i> Notre travail
+        </span>
+        <h2 class="section-title">Nos Réalisations</h2>
         <div class="section-line"></div>
     </div>
     <div class="grid-3">
@@ -49,30 +64,43 @@
             {% if project.image %}
             <img src="{{ project.image }}" alt="{{ project.title }}" class="card-img">
             {% else %}
-            <div class="card-img-placeholder">🎬</div>
+            <div class="card-img-placeholder">
+                <i class="fas fa-video" style="font-size:48px;color:var(--gray);"></i>
+            </div>
             {% endif %}
             <div class="card-body">
-                <div class="card-location">📂 {{ project.category or 'Audiovisuel' }}</div>
+                <div class="card-location">
+                    <i class="fas fa-folder" style="color:var(--gold);"></i>
+                    {{ project.category or 'Audiovisuel' }}
+                </div>
                 <div class="card-title">{{ project.title }}</div>
-                <p class="card-text">{{ (project.description or '')[:100] }}{% if project.description and project.description|length > 100 %}...{% endif %}</p>
-                <a href="{{ url_for('project_detail', slug=project.slug) }}" class="btn btn-dark" style="font-size:11px;padding:10px 20px;">Voir le projet →</a>
+                <p class="card-text">
+                    {{ (project.description or '')[:100] }}
+                    {% if project.description and project.description|length > 100 %}...{% endif %}
+                </p>
+                <a href="{{ url_for('project_detail', slug=project.slug) }}" class="btn btn-dark" style="font-size:11px;padding:10px 20px;">
+                    <i class="fas fa-arrow-right"></i> Voir le projet
+                </a>
             </div>
         </div>
         {% endfor %}
     </div>
     <div style="text-align:center; margin-top:36px;">
-        <a href="{{ url_for('portfolio') }}" class="btn btn-outline">Voir tout le portfolio</a>
+        <a href="{{ url_for('portfolio') }}" class="btn btn-outline-gold">
+            Voir tout le portfolio <i class="fas fa-arrow-right"></i>
+        </a>
     </div>
 </section>
 {% endif %}
 
-<!-- PRODUITS EN VEDETTE -->
+<!-- ===== PRODUITS EN VEDETTE ===== -->
 {% if featured_products %}
 <section style="margin-bottom: 80px;">
-    <div class="product-card reveal">...</div>
     <div class="section-header">
-        <span class="section-label">Boutique</span>
-        <h2 class="section-title">Produits en Vedette</h2>
+        <span class="section-label">
+            <i class="fas fa-store" style="margin-right:6px;"></i> Boutique
+        </span>
+        <h2 class="section-title">Notre Sélection</h2>
         <div class="section-line"></div>
     </div>
     <div class="grid-3">
@@ -81,42 +109,67 @@
             {% if product.image %}
             <img src="{{ product.image }}" alt="{{ product.name }}" class="card-img">
             {% else %}
-            <div class="card-img-placeholder">🛍️</div>
+            <div class="card-img-placeholder">
+                <i class="fas fa-shopping-bag" style="font-size:48px;color:var(--gray);"></i>
+            </div>
             {% endif %}
             <div class="card-body">
-                <div class="card-location">📍 {{ product.location }}</div>
+                <div class="card-location">
+                    <i class="fas fa-location-dot" style="color:var(--gold);"></i>
+                    {{ product.location }}
+                </div>
                 <div class="card-title">{{ product.name }}</div>
                 <div class="card-price">{{ product.price }} €</div>
                 {% if product.stock > 0 %}
-                <span class="badge badge-success">✓ En stock</span>
+                <span class="badge badge-success">
+                    <i class="fas fa-check-circle"></i> En stock
+                </span>
                 {% else %}
-                <span class="badge badge-danger">Rupture</span>
+                <span class="badge badge-danger">
+                    <i class="fas fa-times-circle"></i> Rupture
+                </span>
                 {% endif %}
             </div>
             <div class="card-footer">
-                <a href="{{ url_for('product_detail', slug=product.slug) }}" class="btn btn-dark" style="font-size:11px;padding:10px 20px;">Voir détails</a>
+                <a href="{{ url_for('product_detail', slug=product.slug) }}" class="btn btn-dark" style="font-size:11px;padding:10px 20px;">
+                    <i class="fas fa-eye"></i> Détails
+                </a>
                 {% if product.stock > 0 %}
-                <button onclick="quickAddToCart({{ product.id }}, '{{ product.name }}', {{ product.price }}, '{{ product.image or '' }}')" class="btn btn-gold" style="font-size:11px;padding:10px 20px;">+ Panier</button>
+                <button onclick="quickAddToCart({{ product.id }}, '{{ product.name }}', {{ product.price }}, '{{ product.image or '' }}')" class="btn btn-gold" style="font-size:11px;padding:10px 20px;">
+                    <i class="fas fa-cart-plus"></i> Ajouter
+                </button>
                 {% endif %}
             </div>
         </div>
         {% endfor %}
     </div>
     <div style="text-align:center; margin-top:36px;">
-        <a href="{{ url_for('produits') }}" class="btn btn-outline">Voir tous les produits</a>
+        <a href="{{ url_for('produits') }}" class="btn btn-outline-gold">
+            Voir tous les produits <i class="fas fa-arrow-right"></i>
+        </a>
     </div>
 </section>
 {% endif %}
 
-<!-- CTA FINAL -->
-<section style="background: var(--dark); color: white; padding: 80px 48px; border-radius: 4px; text-align: center; margin-bottom: 20px; position: relative; overflow: hidden;">
-    <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg, rgba(201,168,76,0.06) 0%, transparent 100%);pointer-events:none;"></div>
-    <div style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;font-weight:600;">Démarrons ensemble</div>
-    <h2 style="font-family:'Cormorant Garamond',serif;font-size:clamp(28px,5vw,48px);color:white;margin-bottom:20px;">Vous avez un projet ?</h2>
-    <p style="color:rgba(255,255,255,0.6);font-size:16px;margin-bottom:40px;max-width:500px;margin-left:auto;margin-right:auto;line-height:1.8;">Contactez-nous pour discuter de votre vision. Nous sommes disponibles 7j/7 pour vous accompagner.</p>
-    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
-        <a href="{{ url_for('rendez_vous') }}" class="btn btn-gold">Prendre rendez-vous</a>
-        <a href="{{ url_for('contact') }}" class="btn btn-outline-gold">Nous contacter</a>
+<!-- ===== CTA FINAL ===== -->
+<section style="background: var(--cream-dark); padding: 80px 48px; border-radius: 4px; text-align: center; margin-bottom: 20px; border: 1px solid var(--border); position: relative; overflow: hidden;">
+    <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg, rgba(201,168,76,0.05) 0%, transparent 100%);pointer-events:none;"></div>
+    <div style="position:relative;z-index:2;">
+        <span style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--gold-dark);font-weight:600;display:inline-block;margin-bottom:16px;">
+            <i class="fas fa-handshake" style="margin-right:8px;"></i> Démarrons ensemble
+        </span>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:clamp(28px,5vw,48px);color:var(--black);margin-bottom:20px;">Donnons vie à votre projet</h2>
+        <p style="color:var(--text-light);font-size:16px;margin-bottom:40px;max-width:500px;margin-left:auto;margin-right:auto;line-height:1.8;">
+            Contactez-nous pour discuter de votre vision. Nous sommes disponibles 7j/7 pour vous accompagner.
+        </p>
+        <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+            <a href="{{ url_for('rendez_vous') }}" class="btn btn-gold">
+                <i class="fas fa-arrow-right"></i> Prendre rendez-vous
+            </a>
+            <a href="{{ url_for('contact') }}" class="btn btn-outline-gold">
+                <i class="fas fa-envelope"></i> Nous contacter
+            </a>
+        </div>
     </div>
 </section>
 
@@ -130,8 +183,18 @@ function quickAddToCart(id, name, price, image) {
         cart.push({id, name, price, image, quantity: 1});
     }
     localStorage.setItem('cart', JSON.stringify(cart));
-    updateCartDisplay();
-    alert('✓ ' + name + ' ajouté au panier !');
+    
+    // Mettre à jour le badge du panier flottant
+    if (window.updateFloatingCartBadge) window.updateFloatingCartBadge();
+    if (window.updateCartDisplay) window.updateCartDisplay();
+    
+    // Toast notification
+    if (window.showToast) {
+        window.showToast(name + ' ajouté au panier', 'success');
+    } else {
+        alert('✓ ' + name + ' ajouté au panier !');
+    }
 }
 </script>
+
 {% endblock %}
