@@ -1,5 +1,6 @@
 import os
 import ssl
+import json
 from flask import Flask, render_template, request, redirect, url_for, flash, session, Response, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
@@ -163,9 +164,27 @@ class Project(db.Model):
     featured = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class Customer(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(200), unique=True, nullable=False)
+    phone = db.Column(db.String(50))
+    password_hash = db.Column(db.String(200), nullable=False)
+    address = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class ConversationMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
+    sender = db.Column(db.String(20), nullable=False)  # 'customer' ou 'admin'
+    content = db.Column(db.Text, nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_number = db.Column(db.String(50), unique=True, nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=True)
     customer_name = db.Column(db.String(200), nullable=False)
     customer_email = db.Column(db.String(200), nullable=False)
     customer_phone = db.Column(db.String(50))
@@ -173,6 +192,7 @@ class Order(db.Model):
     total = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='pending')
     payment_status = db.Column(db.String(50), default='manual')  # préparé pour Stripe plus tard
+    stripe_payment_intent_id = db.Column(db.String(200), nullable=True)
     items = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -239,6 +259,15 @@ def login_required(f):
         if 'user_id' not in session:
             flash('Veuillez vous connecter pour accéder à cette page', 'error')
             return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def customer_login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'customer_id' not in session:
+            flash('Veuillez vous connecter ou créer un compte pour continuer', 'error')
+            return redirect(url_for('account_login', next=request.path))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -326,6 +355,12 @@ def send_newsletter_email(to_email, subject, content):
 @app.context_processor
 def inject_globals():
     settings = {s.key: s.value for s in Setting.query.all()}
+    customer_logged_in = 'customer_id' in session
+    customer_unread_count = 0
+    if customer_logged_in:
+        customer_unread_count = ConversationMessage.query.filter_by(
+            customer_id=session['customer_id'], sender='admin', is_read=False
+        ).count()
     return dict(
         site_settings=settings,
         site_name=settings.get('site_name', 'Magie Groupe'),
@@ -335,7 +370,11 @@ def inject_globals():
         site_whatsapp=settings.get('whatsapp', ''),
         social_instagram=settings.get('instagram', ''),
         social_facebook=settings.get('facebook', ''),
-        social_tiktok=settings.get('tiktok', '')
+        social_tiktok=settings.get('tiktok', ''),
+        logo_url=settings.get('logo_url', ''),
+        customer_logged_in=customer_logged_in,
+        customer_name=session.get('customer_name', ''),
+        customer_unread_count=customer_unread_count
     )
 
 @app.route('/sitemap.xml')
@@ -434,12 +473,137 @@ def contact():
 def panier():
     return render_template('public/panier.html')
 
+# ==================== COMPTE CLIENT ====================
+
+@app.route('/compte/inscription', methods=['GET', 'POST'])
+@limiter.limit("10 per hour")
+def account_register():
+    if 'customer_id' in session:
+        return redirect(url_for('account_dashboard'))
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        phone = request.form.get('phone', '').strip()
+        address = request.form.get('address', '').strip()
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+
+        if not name or not email or not password:
+            flash('Veuillez remplir tous les champs obligatoires', 'error')
+            return render_template('public/account_register.html')
+
+        if password != confirm_password:
+            flash('Les mots de passe ne correspondent pas', 'error')
+            return render_template('public/account_register.html')
+
+        valid, msg = validate_password_strength(password)
+        if not valid:
+            flash(msg, 'error')
+            return render_template('public/account_register.html')
+
+        if Customer.query.filter_by(email=email).first():
+            flash('Un compte existe déjà avec cet email', 'error')
+            return render_template('public/account_register.html')
+
+        customer = Customer(
+            name=name,
+            email=email,
+            phone=phone,
+            address=address,
+            password_hash=generate_password_hash(password)
+        )
+        db.session.add(customer)
+        db.session.commit()
+
+        session.permanent = True
+        session['customer_id'] = customer.id
+        session['customer_name'] = customer.name
+        flash('Compte créé avec succès, bienvenue !', 'success')
+
+        next_url = request.args.get('next') or request.form.get('next')
+        return redirect(next_url or url_for('account_dashboard'))
+
+    return render_template('public/account_register.html')
+
+@app.route('/compte/connexion', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
+def account_login():
+    if 'customer_id' in session:
+        return redirect(url_for('account_dashboard'))
+
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+
+        customer = Customer.query.filter_by(email=email).first()
+        if customer and check_password_hash(customer.password_hash, password):
+            session.permanent = True
+            session['customer_id'] = customer.id
+            session['customer_name'] = customer.name
+            flash(f'Bon retour, {customer.name} !', 'success')
+            next_url = request.args.get('next') or request.form.get('next')
+            return redirect(next_url or url_for('account_dashboard'))
+        else:
+            flash('Email ou mot de passe incorrect', 'error')
+
+    return render_template('public/account_login.html')
+
+@app.route('/compte/deconnexion')
+def account_logout():
+    session.pop('customer_id', None)
+    session.pop('customer_name', None)
+    flash('Vous avez été déconnecté', 'info')
+    return redirect(url_for('index'))
+
+@app.route('/compte')
+@customer_login_required
+def account_dashboard():
+    customer = Customer.query.get(session['customer_id'])
+    orders = Order.query.filter_by(customer_id=customer.id).order_by(Order.created_at.desc()).all()
+    unread_count = ConversationMessage.query.filter_by(
+        customer_id=customer.id, sender='admin', is_read=False
+    ).count()
+    return render_template('public/account_dashboard.html', customer=customer, orders=orders, unread_count=unread_count)
+
+@app.route('/compte/commande/<order_number>')
+@customer_login_required
+def account_order_detail(order_number):
+    customer = Customer.query.get(session['customer_id'])
+    order = Order.query.filter_by(order_number=order_number, customer_id=customer.id).first_or_404()
+    try:
+        items = json.loads(order.items) if order.items else []
+    except (json.JSONDecodeError, TypeError):
+        items = []
+    return render_template('public/account_order_detail.html', order=order, items=items)
+
+@app.route('/compte/messages', methods=['GET', 'POST'])
+@customer_login_required
+def account_messages():
+    customer = Customer.query.get(session['customer_id'])
+
+    if request.method == 'POST':
+        content = request.form.get('content', '').strip()
+        if content:
+            db.session.add(ConversationMessage(customer_id=customer.id, sender='customer', content=content))
+            db.session.commit()
+        return redirect(url_for('account_messages'))
+
+    # Marquer les messages admin comme lus dès que le client consulte la page
+    ConversationMessage.query.filter_by(customer_id=customer.id, sender='admin', is_read=False).update({'is_read': True})
+    db.session.commit()
+
+    messages = ConversationMessage.query.filter_by(customer_id=customer.id).order_by(ConversationMessage.created_at.asc()).all()
+    return render_template('public/account_messages.html', customer=customer, messages=messages)
+
 @app.route('/checkout', methods=['GET', 'POST'])
 @limiter.limit("10 per hour")
+@customer_login_required
 def checkout():
     if request.method == 'POST':
         order = Order(
             order_number=generate_order_number(),
+            customer_id=session['customer_id'],
             customer_name=request.form.get('name'),
             customer_email=request.form.get('email'),
             customer_phone=request.form.get('phone'),
@@ -451,7 +615,7 @@ def checkout():
         db.session.add(order)
         db.session.commit()
         return redirect(url_for('order_success', order_number=order.order_number))
-    return render_template('public/checkout.html')
+    return render_template('public/checkout.html', customer=Customer.query.get(session['customer_id']))
 
 @app.route('/success/<order_number>')
 def order_success(order_number):
@@ -554,7 +718,9 @@ def admin_dashboard():
         'appointments': Appointment.query.count(),
         'pending_appointments': Appointment.query.filter_by(status='pending').count(),
         'contacts': Contact.query.filter_by(status='new').count(),
-        'subscribers': NewsletterSubscriber.query.filter_by(status='active').count()
+        'subscribers': NewsletterSubscriber.query.filter_by(status='active').count(),
+        'customers': Customer.query.count(),
+        'unread_customer_messages': ConversationMessage.query.filter_by(sender='customer', is_read=False).count()
     }
     return render_template('admin/dashboard.html', stats=stats)
 
@@ -725,7 +891,12 @@ def admin_orders():
 @app.route('/admin/orders/<int:id>')
 @login_required
 def admin_order_detail(id):
-    return render_template('admin/order_detail.html', order=Order.query.get_or_404(id))
+    order = Order.query.get_or_404(id)
+    try:
+        items = json.loads(order.items) if order.items else []
+    except (json.JSONDecodeError, TypeError):
+        items = []
+    return render_template('admin/order_detail.html', order=order, items=items)
 
 @app.route('/admin/orders/<int:id>/status', methods=['POST'])
 @login_required
@@ -799,6 +970,34 @@ def admin_delete_contact(id):
 
 # ---------- Newsletter ----------
 
+@app.route('/admin/customers')
+@login_required
+def admin_customers():
+    customers = Customer.query.order_by(Customer.created_at.desc()).all()
+    unread_map = {}
+    for c in customers:
+        unread_map[c.id] = ConversationMessage.query.filter_by(customer_id=c.id, sender='customer', is_read=False).count()
+    return render_template('admin/customers.html', customers=customers, unread_map=unread_map)
+
+@app.route('/admin/customers/<int:id>', methods=['GET', 'POST'])
+@login_required
+def admin_customer_detail(id):
+    customer = Customer.query.get_or_404(id)
+
+    if request.method == 'POST':
+        content = request.form.get('content', '').strip()
+        if content:
+            db.session.add(ConversationMessage(customer_id=customer.id, sender='admin', content=content))
+            db.session.commit()
+        return redirect(url_for('admin_customer_detail', id=id))
+
+    ConversationMessage.query.filter_by(customer_id=customer.id, sender='customer', is_read=False).update({'is_read': True})
+    db.session.commit()
+
+    messages = ConversationMessage.query.filter_by(customer_id=customer.id).order_by(ConversationMessage.created_at.asc()).all()
+    orders = Order.query.filter_by(customer_id=customer.id).order_by(Order.created_at.desc()).all()
+    return render_template('admin/customer_detail.html', customer=customer, messages=messages, orders=orders)
+
 @app.route('/admin/newsletter')
 @login_required
 def admin_newsletter():
@@ -871,7 +1070,7 @@ def admin_delete_campaign(id):
 def admin_settings():
     if request.method == 'POST':
         keys = ['site_name', 'phone', 'email', 'address', 'whatsapp',
-                'instagram', 'facebook', 'tiktok', 'meta_description']
+                'instagram', 'facebook', 'tiktok', 'meta_description', 'logo_url']
         for key in keys:
             value = request.form.get(key)
             setting = Setting.query.filter_by(key=key).first()
