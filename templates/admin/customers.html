@@ -1,0 +1,65 @@
+{% extends "admin/base.html" %}
+{% block title %}Clients - Admin{% endblock %}
+{% block content %}
+
+<div class="admin-content">
+    <div class="content-header">
+        <h1>Clients</h1>
+    </div>
+
+    {% if customers %}
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Email</th>
+                    <th>Téléphone</th>
+                    <th>Inscrit le</th>
+                    <th>Messages</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                <tr>
+                    <td><strong>{{ customer.name }}</strong></td>
+                    <td>{{ customer.email }}</td>
+                    <td>{{ customer.phone or '-' }}</td>
+                    <td>{{ customer.created_at.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        {% if unread_map.get(customer.id, 0) > 0 %}
+                        <span class="badge-notif">{{ unread_map[customer.id] }} nouveau(x)</span>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="actions-cell">
+                        <a href="{{ url_for('admin_customer_detail', id=customer.id) }}" class="btn btn-sm btn-secondary" title="Voir / Répondre">
+                            <i class="fas fa-comments"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-user-circle fa-3x"></i>
+        <p>Aucun client inscrit pour le moment</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.badge-notif {
+    background: #dc3545;
+    color: white;
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 10px;
+}
+</style>
+
+{% endblock %}

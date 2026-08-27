@@ -3,41 +3,57 @@
 {% block content %}
 
 <div class="content-header">
-    <h1>
-        <i class="fas fa-receipt" style="color:var(--gold);margin-right:12px;"></i>
-        Commande {{ order.order_number }}
-    </h1>
-    <a href="{{ url_for('admin_orders') }}" class="btn btn-secondary btn-sm">
-        <i class="fas fa-arrow-left"></i> Retour
-    </a>
+    <h1>Commande {{ order.order_number }}</h1>
+    <a href="{{ url_for('admin_orders') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Retour</a>
 </div>
 
 <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;">
-    <!-- DÉTAILS COMMANDE -->
     <div class="admin-form-container">
-        <h3 style="margin-bottom:16px;">
-            <i class="fas fa-box" style="color:var(--gold);margin-right:8px;"></i> Articles commandés
-        </h3>
-        <pre style="background:var(--bg-2);padding:16px;border-radius:8px;font-size:13px;overflow-x:auto;white-space:pre-wrap;font-family:monospace;">{{ order.items }}</pre>
+        <h3 style="margin-bottom:16px;">Articles commandés</h3>
+        {% if items %}
+        <table class="data-table" style="margin-bottom:0;">
+            <thead>
+                <tr>
+                    <th>Image</th>
+                    <th>Produit</th>
+                    <th>Prix unitaire</th>
+                    <th>Quantité</th>
+                    <th>Sous-total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>
+                        {% if item.image %}
+                        <img src="{{ item.image }}" alt="{{ item.name }}" class="lightbox-img" style="width:50px;height:50px;object-fit:cover;border-radius:6px;">
+                        {% else %}
+                        <div style="width:50px;height:50px;background:var(--bg-2);border-radius:6px;"></div>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ item.name }}</strong></td>
+                    <td>{{ item.price }} €</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ (item.price * item.quantity) | round(2) }} €</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color:var(--text-light);">Aucun article trouvé pour cette commande.</p>
+        {% endif %}
 
-        <h3 style="margin:24px 0 16px;">
-            <i class="fas fa-user" style="color:var(--gold);margin-right:8px;"></i> Client
-        </h3>
+        <h3 style="margin:24px 0 16px;">Client</h3>
         <p><strong>Nom :</strong> {{ order.customer_name }}</p>
         <p><strong>Email :</strong> <a href="mailto:{{ order.customer_email }}">{{ order.customer_email }}</a></p>
         <p><strong>Téléphone :</strong> {{ order.customer_phone }}</p>
         <p><strong>Adresse :</strong> {{ order.customer_address }}</p>
         <p><strong>Date :</strong> {{ order.created_at.strftime('%d/%m/%Y à %H:%M') }}</p>
-        <p style="margin-top:16px;font-size:24px;font-weight:700;color:var(--gold-dark);">
-            <i class="fas fa-euro-sign" style="color:var(--gold);"></i> Total : {{ order.total }} €
-        </p>
+        <p style="margin-top:16px;font-size:20px;"><strong>Total : {{ order.total }} €</strong></p>
     </div>
 
-    <!-- STATUT -->
     <div class="admin-form-container">
-        <h3 style="margin-bottom:16px;">
-            <i class="fas fa-tasks" style="color:var(--gold);margin-right:8px;"></i> Statut
-        </h3>
+        <h3 style="margin-bottom:16px;">Statut</h3>
         <form method="POST" action="{{ url_for('admin_update_order_status', id=order.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
@@ -49,16 +65,13 @@
                     <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Annulée</option>
                 </select>
             </div>
-            <button type="submit" class="btn btn-gold btn-full">
-                <i class="fas fa-save"></i> Mettre à jour
-            </button>
+            <button type="submit" class="btn btn-gold btn-full">Mettre à jour</button>
         </form>
 
-        <form method="POST" action="{{ url_for('admin_delete_order', id=order.id) }}" onsubmit="return confirm('Supprimer définitivement cette commande ?');" style="margin-top:16px;">
+        <form method="POST" action="{{ url_for('admin_delete_order', id=order.id) }}"
+              onsubmit="return confirm('Supprimer définitivement cette commande ?');" style="margin-top:16px;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-danger btn-full">
-                <i class="fas fa-trash"></i> Supprimer
-            </button>
+            <button type="submit" class="btn btn-danger btn-full"><i class="fas fa-trash"></i> Supprimer</button>
         </form>
     </div>
 </div>

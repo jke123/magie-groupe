@@ -4,41 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Admin - {{ site_name }}{% endblock %}</title>
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-buttons.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/enhancements.css') }}">
-    
     <meta name="robots" content="noindex, nofollow">
 </head>
 <body class="admin-body">
 
-<!-- ===== BOUTON MOBILE POUR SIDEBAR ===== -->
-<button class="admin-mobile-toggle" onclick="document.querySelector('.admin-sidebar').classList.toggle('open')" aria-label="Menu admin">
+<button class="admin-mobile-toggle" onclick="document.querySelector('.admin-sidebar').classList.toggle('open')">
     <i class="fas fa-bars"></i>
 </button>
 
-<!-- ===== SIDEBAR ===== -->
 <aside class="admin-sidebar">
-    <div class="logo" style="padding:24px 20px;border-bottom:1px solid rgba(255,255,255,0.1);">
-        <img src="{{ url_for('static', filename='image/logo.png') }}" 
-             alt="{{ site_name }}" 
-             style="height:36px;width:auto;display:block;margin-bottom:4px;">
-        <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase;font-weight:300;">
-            Panel Administrateur
-        </div>
+    <div class="logo">
+        <div class="logo-main">MAGIE <span>GROUPE</span></div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase;margin-top:4px;">Panel Admin</div>
     </div>
-    
     <nav class="admin-nav">
         <a href="{{ url_for('admin_dashboard') }}" {% if request.endpoint == 'admin_dashboard' %}class="active"{% endif %}>
             <i class="fas fa-chart-line"></i> Dashboard
@@ -51,6 +37,9 @@
         </a>
         <a href="{{ url_for('admin_orders') }}" {% if 'order' in request.endpoint %}class="active"{% endif %}>
             <i class="fas fa-shopping-cart"></i> Commandes
+        </a>
+        <a href="{{ url_for('admin_customers') }}" {% if 'customer' in request.endpoint %}class="active"{% endif %}>
+            <i class="fas fa-user-circle"></i> Clients
         </a>
         <a href="{{ url_for('admin_appointments') }}" {% if 'appointment' in request.endpoint %}class="active"{% endif %}>
             <i class="fas fa-calendar"></i> Rendez-vous
@@ -68,29 +57,24 @@
             <i class="fas fa-cog"></i> Paramètres
         </a>
     </nav>
-    
-    <div class="admin-sidebar-footer" style="padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1);margin-top:auto;">
-        <a href="{{ url_for('admin_logout') }}" style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.5);font-size:13px;transition:var(--transition);">
-            <i class="fas fa-sign-out-alt"></i> Déconnexion
-        </a>
+    <div class="admin-sidebar-footer">
+        <a href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
     </div>
 </aside>
 
-<!-- ===== MAIN CONTENT ===== -->
 <main class="admin-main">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
                 <div class="alert alert-{{ 'success' if category == 'success' else 'error' if category == 'error' else 'info' }}" style="margin-bottom:20px;">
-                    <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' if category == 'error' else 'info-circle' }}"></i>
                     {{ message }}
                 </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
-    
     {% block content %}{% endblock %}
 </main>
 
+<script src="{{ url_for('static', filename='js/animations.js') }}"></script>
 </body>
 </html>
