@@ -1,0 +1,141 @@
+{% extends "public/base.html" %}
+{% block title %}Mon compte - {{ site_name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Bonjour {{ customer.name }}</h1>
+    <p>Suivez vos commandes et échangez avec notre équipe</p>
+</div>
+
+<div class="account-dashboard-grid">
+    <div class="account-sidebar">
+        <div class="account-sidebar-item active">
+            <i class="fas fa-box"></i> Mes commandes
+        </div>
+        <a href="{{ url_for('account_messages') }}" class="account-sidebar-item">
+            <i class="fas fa-comments"></i> Messagerie
+            {% if unread_count > 0 %}
+            <span class="badge-notif">{{ unread_count }}</span>
+            {% endif %}
+        </a>
+        <a href="{{ url_for('account_logout') }}" class="account-sidebar-item">
+            <i class="fas fa-sign-out-alt"></i> Déconnexion
+        </a>
+    </div>
+
+    <div class="account-content">
+        <h2 style="margin-bottom:20px;">Mes commandes</h2>
+
+        {% if orders %}
+        <div style="display:flex;flex-direction:column;gap:16px;">
+            {% for order in orders %}
+            <a href="{{ url_for('account_order_detail', order_number=order.order_number) }}" class="order-card-link">
+                <div class="order-card">
+                    <div>
+                        <div style="font-weight:600;">{{ order.order_number }}</div>
+                        <div style="color:var(--text-light);font-size:13px;">{{ order.created_at.strftime('%d/%m/%Y') }}</div>
+                    </div>
+                    <div>
+                        <span class="badge badge-{{ order.status }}">{{ order.status }}</span>
+                    </div>
+                    <div style="font-weight:600;color:var(--gold-dark);">{{ order.total }} €</div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:40px 0;color:var(--text-light);">
+            <p>Vous n'avez pas encore passé de commande.</p>
+            <a href="{{ url_for('produits') }}" class="btn btn-gold" style="margin-top:16px;">Découvrir nos produits</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.account-dashboard-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 24px;
+}
+
+.account-sidebar {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 12px;
+    height: fit-content;
+}
+
+.account-sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    color: var(--text-dark);
+    text-decoration: none;
+    position: relative;
+    cursor: default;
+}
+
+a.account-sidebar-item:hover {
+    background: rgba(201,168,76,0.08);
+    color: var(--gold-dark);
+}
+
+.account-sidebar-item.active {
+    background: var(--gold);
+    color: white;
+}
+
+.badge-notif {
+    background: #dc3545;
+    color: white;
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-left: auto;
+}
+
+.account-content {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 32px;
+}
+
+.order-card-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.order-card {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    transition: var(--transition);
+}
+
+.order-card:hover {
+    border-color: var(--gold);
+    box-shadow: 0 4px 12px rgba(201,168,76,0.15);
+}
+
+@media (max-width: 768px) {
+    .account-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    .account-sidebar {
+        display: flex;
+        overflow-x: auto;
+        gap: 8px;
+    }
+}
+</style>
+
+{% endblock %}

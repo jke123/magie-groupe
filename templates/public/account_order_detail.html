@@ -1,0 +1,62 @@
+{% extends "public/base.html" %}
+{% block title %}Commande {{ order.order_number }} - {{ site_name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Commande {{ order.order_number }}</h1>
+    <p><a href="{{ url_for('account_dashboard') }}" style="color:var(--gold);">← Retour à mes commandes</a></p>
+</div>
+
+<div class="account-content" style="max-width:800px;margin:0 auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+        <span class="badge badge-{{ order.status }}" style="font-size:14px;padding:8px 16px;">{{ order.status }}</span>
+        <span style="color:var(--text-light);">{{ order.created_at.strftime('%d/%m/%Y à %H:%M') }}</span>
+    </div>
+
+    {% if items %}
+    <table class="data-table" style="margin-bottom:24px;">
+        <thead>
+            <tr>
+                <th>Image</th>
+                <th>Produit</th>
+                <th>Prix</th>
+                <th>Qté</th>
+                <th>Sous-total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>
+                    {% if item.image %}
+                    <img src="{{ item.image }}" alt="{{ item.name }}" class="lightbox-img" style="width:50px;height:50px;object-fit:cover;border-radius:6px;cursor:zoom-in;">
+                    {% else %}
+                    <div style="width:50px;height:50px;background:var(--bg-2);border-radius:6px;"></div>
+                    {% endif %}
+                </td>
+                <td><strong>{{ item.name }}</strong></td>
+                <td>{{ item.price }} €</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ (item.price * item.quantity) | round(2) }} €</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div style="display:flex;justify-content:space-between;font-size:20px;font-weight:600;padding-top:16px;border-top:1px solid var(--border);margin-bottom:32px;">
+        <span>Total</span>
+        <span style="color:var(--gold-dark);">{{ order.total }} €</span>
+    </div>
+
+    <h3 style="margin-bottom:12px;">Adresse de livraison</h3>
+    <p style="color:var(--text-light);">{{ order.customer_address }}</p>
+
+    <div style="margin-top:32px;">
+        <a href="{{ url_for('account_messages') }}" class="btn btn-outline">
+            <i class="fas fa-comments"></i> Une question sur cette commande ? Contactez-nous
+        </a>
+    </div>
+</div>
+
+{% endblock %}

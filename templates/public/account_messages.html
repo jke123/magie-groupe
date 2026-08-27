@@ -1,0 +1,101 @@
+{% extends "public/base.html" %}
+{% block title %}Messagerie - {{ site_name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Messagerie</h1>
+    <p>Échangez directement avec notre équipe</p>
+</div>
+
+<div class="account-dashboard-grid">
+    <div class="account-sidebar">
+        <a href="{{ url_for('account_dashboard') }}" class="account-sidebar-item">
+            <i class="fas fa-box"></i> Mes commandes
+        </a>
+        <div class="account-sidebar-item active">
+            <i class="fas fa-comments"></i> Messagerie
+        </div>
+        <a href="{{ url_for('account_logout') }}" class="account-sidebar-item">
+            <i class="fas fa-sign-out-alt"></i> Déconnexion
+        </a>
+    </div>
+
+    <div class="account-content">
+        <div class="chat-thread" id="chatThread">
+            {% if messages %}
+                {% for msg in messages %}
+                <div class="chat-bubble {{ 'chat-bubble-mine' if msg.sender == 'customer' else 'chat-bubble-admin' }}">
+                    <div class="chat-bubble-content">{{ msg.content }}</div>
+                    <div class="chat-bubble-time">{{ msg.created_at.strftime('%d/%m %H:%M') }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <p style="text-align:center;color:var(--text-light);padding:40px 0;">
+                Aucun message pour le moment. Envoyez-nous votre première question !
+            </p>
+            {% endif %}
+        </div>
+
+        <form method="POST" class="chat-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <textarea name="content" class="form-control" rows="3" placeholder="Écrivez votre message..." required></textarea>
+            <button type="submit" class="btn btn-gold">Envoyer</button>
+        </form>
+    </div>
+</div>
+
+<style>
+.chat-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 500px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    padding: 10px;
+}
+
+.chat-bubble {
+    max-width: 75%;
+    padding: 12px 16px;
+    border-radius: 14px;
+}
+
+.chat-bubble-mine {
+    align-self: flex-end;
+    background: var(--gold);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-bubble-admin {
+    align-self: flex-start;
+    background: var(--bg-2);
+    color: var(--text-dark);
+    border-bottom-left-radius: 4px;
+}
+
+.chat-bubble-time {
+    font-size: 11px;
+    opacity: 0.7;
+    margin-top: 4px;
+}
+
+.chat-form {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.chat-form textarea {
+    flex: 1;
+}
+</style>
+
+<script>
+    // Scroller automatiquement vers le bas du fil de discussion
+    const thread = document.getElementById('chatThread');
+    if (thread) thread.scrollTop = thread.scrollHeight;
+</script>
+
+{% endblock %}

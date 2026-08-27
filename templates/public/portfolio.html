@@ -4,65 +4,39 @@
 
 <div class="page-header">
     <h1>Notre Portfolio</h1>
-    <p>Découvrez nos réalisations en production audiovisuelle, photographie et événementiel</p>
+    <p>Découvrez nos réalisations en production audiovisuelle</p>
 </div>
 
-<!-- FILTRES -->
 <div class="filters">
-    <a href="{{ url_for('portfolio') }}?category=all" class="filter-btn {% if not category or category == 'all' %}active{% endif %}">
-        <i class="fas fa-th"></i> Tous
-    </a>
-    <a href="{{ url_for('portfolio') }}?category=video" class="filter-btn {% if category == 'video' %}active{% endif %}">
-        <i class="fas fa-video"></i> Production Vidéo
-    </a>
-    <a href="{{ url_for('portfolio') }}?category=photo" class="filter-btn {% if category == 'photo' %}active{% endif %}">
-        <i class="fas fa-camera"></i> Photographie
-    </a>
-    <a href="{{ url_for('portfolio') }}?category=evenementiel" class="filter-btn {% if category == 'evenementiel' %}active{% endif %}">
-        <i class="fas fa-calendar-check"></i> Événementiel
-    </a>
+    <a href="{{ url_for('portfolio') }}?category=all" class="filter-btn {% if not category or category == 'all' %}active{% endif %}">Tous</a>
+    <a href="{{ url_for('portfolio') }}?category=video" class="filter-btn {% if category == 'video' %}active{% endif %}">Production Vidéo</a>
+    <a href="{{ url_for('portfolio') }}?category=photo" class="filter-btn {% if category == 'photo' %}active{% endif %}">Photographie</a>
+    <a href="{{ url_for('portfolio') }}?category=evenementiel" class="filter-btn {% if category == 'evenementiel' %}active{% endif %}">Événementiel</a>
 </div>
 
-<!-- PROJETS -->
 {% if projects %}
 <div class="grid-3">
     {% for project in projects %}
     <div class="card">
         {% if project.image %}
-        <img src="{{ project.image }}" alt="{{ project.title }}" class="card-img">
+        <img src="{{ project.image }}" alt="{{ project.title }}" class="card-img lightbox-img">
         {% else %}
-        <div class="card-img-placeholder">
-            <i class="fas fa-film" style="font-size:48px;color:var(--gray);"></i>
-        </div>
+        <div class="card-img-placeholder">🎬</div>
         {% endif %}
         <div class="card-body">
-            <div class="card-location">
-                <i class="fas fa-user" style="color:var(--gold);"></i>
-                {{ project.client }}
-            </div>
+            <div class="card-location">{{ project.client }}</div>
             <div class="card-title">{{ project.title }}</div>
-            <span class="badge badge-gold">
-                <i class="fas fa-tag"></i> {{ project.category }}
-            </span>
+            <span class="badge badge-gold">{{ project.category }}</span>
         </div>
         <div class="card-footer">
-            <a href="{{ url_for('project_detail', slug=project.slug) }}" class="btn btn-dark" style="font-size:11px;padding:10px 20px;">
-                <i class="fas fa-arrow-right"></i> Voir le projet
-            </a>
+            <a href="{{ url_for('project_detail', slug=project.slug) }}" class="btn btn-dark" style="font-size:11px;padding:10px 20px;">Voir le projet</a>
         </div>
     </div>
     {% endfor %}
 </div>
 {% else %}
-<div class="empty-state">
-    <div class="empty-icon">
-        <i class="fas fa-film" style="font-size:56px;opacity:0.3;"></i>
-    </div>
-    <h2>Aucun projet pour le moment</h2>
-    <p>Revenez bientôt pour découvrir nos dernières réalisations.</p>
-    <a href="{{ url_for('contact') }}" class="btn btn-gold">
-        <i class="fas fa-envelope"></i> Nous contacter
-    </a>
+<div style="text-align:center;padding:60px 0;color:var(--gray);">
+    <p>Aucun projet pour le moment.</p>
 </div>
 {% endif %}
 
