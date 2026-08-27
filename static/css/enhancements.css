@@ -276,6 +276,87 @@ input:focus, textarea:focus, select:focus {
     transform: translateY(-4px);
 }
 
+/* ---------- Lightbox (zoom image au clic) ---------- */
+.lightbox-img {
+    cursor: zoom-in;
+}
+
+.lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 10, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s var(--ease-smooth), visibility 0.3s var(--ease-smooth);
+    padding: 24px;
+}
+
+.lightbox-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.lightbox-overlay img {
+    max-width: min(92vw, 1100px);
+    max-height: 88vh;
+    border-radius: 6px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    transform: scale(0.92);
+    transition: transform 0.3s var(--ease-smooth);
+}
+
+.lightbox-overlay.open img {
+    transform: scale(1);
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 20px; right: 24px;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    color: var(--white, #fff);
+    border: 1px solid rgba(255,255,255,0.2);
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.lightbox-close:hover {
+    background: var(--gold);
+    color: var(--black);
+}
+
+/* ---------- Logo image dans header/hero ---------- */
+.logo-image {
+    max-height: 48px;
+    width: auto;
+    display: block;
+}
+
+.hero-logo-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 28px;
+    padding: 24px 40px;
+    border-radius: 16px;
+    background: radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 70%);
+}
+
+.hero-logo-wrap img {
+    max-height: 90px;
+    width: auto;
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.5));
+}
+
 /* ---------- Accessibilité : réduire animations si demandé ---------- */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
