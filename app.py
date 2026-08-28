@@ -19,6 +19,7 @@ import cloudinary.uploader
 
 from templates_data import TEMPLATES
 from static_data import STATIC_FILES
+from static_binary_data import STATIC_BINARY_FILES
 
 app = Flask(
     __name__,
@@ -35,14 +36,28 @@ app.jinja_loader = ChoiceLoader([
 ])
 
 def embedded_static(filename):
-    """Sert les fichiers CSS/JS embarqués si le fichier n'est pas trouvé sur le disque."""
+    """Sert les fichiers statiques : d'abord depuis le disque, sinon depuis les
+    modules embarqués (STATIC_FILES pour le texte CSS/JS, STATIC_BINARY_FILES
+    pour les images en base64) — garantit le fonctionnement même si Vercel
+    n'inclut pas le dossier static/ physiquement."""
     disk_path = os.path.join(app.static_folder, filename)
     if os.path.exists(disk_path):
         return app.send_static_file(filename)
+
     if filename in STATIC_FILES:
         ext = filename.rsplit('.', 1)[-1] if '.' in filename else ''
         mime = 'text/css' if ext == 'css' else 'application/javascript' if ext == 'js' else 'text/plain'
         return Response(STATIC_FILES[filename], mimetype=mime)
+
+    if filename in STATIC_BINARY_FILES:
+        import base64
+        ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+        mime_map = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+                    'svg': 'image/svg+xml', 'webp': 'image/webp', 'ico': 'image/x-icon', 'gif': 'image/gif'}
+        mime = mime_map.get(ext, 'application/octet-stream')
+        data = base64.b64decode(STATIC_BINARY_FILES[filename])
+        return Response(data, mimetype=mime)
+
     return "Not Found", 404
 
 # Remplace la vue de la route 'static' déjà enregistrée automatiquement par Flask,
@@ -371,7 +386,6 @@ def inject_globals():
         social_instagram=settings.get('instagram', ''),
         social_facebook=settings.get('facebook', ''),
         social_tiktok=settings.get('tiktok', ''),
-        logo_url=settings.get('logo_url', ''),
         customer_logged_in=customer_logged_in,
         customer_name=session.get('customer_name', ''),
         customer_unread_count=customer_unread_count
@@ -1070,7 +1084,7 @@ def admin_delete_campaign(id):
 def admin_settings():
     if request.method == 'POST':
         keys = ['site_name', 'phone', 'email', 'address', 'whatsapp',
-                'instagram', 'facebook', 'tiktok', 'meta_description', 'logo_url']
+                'instagram', 'facebook', 'tiktok', 'meta_description']
         for key in keys:
             value = request.form.get(key)
             setting = Setting.query.filter_by(key=key).first()
