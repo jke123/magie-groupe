@@ -7,3 +7,4 @@ itsdangerous==2.1.2
 psycopg2-binary==2.9.9
 cloudinary==1.40.0
 python-dotenv==1.0.0
+stripe==10.12.0

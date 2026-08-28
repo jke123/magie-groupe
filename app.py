@@ -16,6 +16,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import cloudinary
 import cloudinary.uploader
+import stripe
 
 from templates_data import TEMPLATES
 from static_data import STATIC_FILES
@@ -109,6 +110,10 @@ cloudinary.config(
     api_secret=os.environ.get('CLOUDINARY_API_SECRET'),
     secure=True
 )
+
+# ==================== STRIPE (paiement) ====================
+stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
 def upload_image(file):
     """Upload une image vers Cloudinary, retourne l'URL sécurisée ou None"""
@@ -208,6 +213,7 @@ class Order(db.Model):
     status = db.Column(db.String(50), default='pending')
     payment_status = db.Column(db.String(50), default='manual')  # préparé pour Stripe plus tard
     stripe_payment_intent_id = db.Column(db.String(200), nullable=True)
+    stripe_session_id = db.Column(db.String(200), nullable=True)
     items = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -615,6 +621,33 @@ def account_messages():
 @customer_login_required
 def checkout():
     if request.method == 'POST':
+        # Validation serveur des articles et prix — ne JAMAIS faire confiance
+        # aux prix envoyés par le navigateur quand de l'argent réel est en jeu.
+        try:
+            raw_items = json.loads(request.form.get('items', '[]'))
+        except (json.JSONDecodeError, TypeError):
+            raw_items = []
+
+        validated_items = []
+        total = 0.0
+        for raw in raw_items:
+            product = Product.query.get(raw.get('id'))
+            if not product:
+                continue
+            qty = max(1, int(raw.get('quantity', 1)))
+            validated_items.append({
+                'id': product.id,
+                'name': product.name,
+                'price': product.price,
+                'image': product.image,
+                'quantity': qty
+            })
+            total += product.price * qty
+
+        if not validated_items:
+            flash('Votre panier est vide ou invalide', 'error')
+            return redirect(url_for('panier'))
+
         order = Order(
             order_number=generate_order_number(),
             customer_id=session['customer_id'],
@@ -622,19 +655,95 @@ def checkout():
             customer_email=request.form.get('email'),
             customer_phone=request.form.get('phone'),
             customer_address=request.form.get('address'),
-            total=float(request.form.get('total')),
-            items=request.form.get('items'),
-            payment_status='manual'  # Stripe branché ici plus tard
+            total=round(total, 2),
+            items=json.dumps(validated_items),
+            status='pending',
+            payment_status='pending'
         )
         db.session.add(order)
         db.session.commit()
-        return redirect(url_for('order_success', order_number=order.order_number))
+
+        # Si Stripe n'est pas configuré (clé manquante), on garde un mode dégradé
+        # pour ne jamais bloquer complètement le site en attendant la config.
+        if not stripe.api_key:
+            flash('Le paiement en ligne n\'est pas encore configuré. Votre commande a été enregistrée, notre équipe vous contactera.', 'info')
+            return redirect(url_for('order_success', order_number=order.order_number))
+
+        line_items = [{
+            'price_data': {
+                'currency': 'eur',
+                'product_data': {'name': item['name']},
+                'unit_amount': int(round(item['price'] * 100)),
+            },
+            'quantity': item['quantity'],
+        } for item in validated_items]
+
+        try:
+            checkout_session = stripe.checkout.Session.create(
+                line_items=line_items,
+                mode='payment',
+                success_url=url_for('order_success', order_number=order.order_number, _external=True) + '?session_id={CHECKOUT_SESSION_ID}',
+                cancel_url=url_for('checkout', _external=True),
+                customer_email=order.customer_email,
+                client_reference_id=order.order_number,
+            )
+        except Exception as e:
+            flash(f"Erreur lors de la création du paiement : {e}", 'error')
+            return redirect(url_for('checkout'))
+
+        order.stripe_session_id = checkout_session.id
+        db.session.commit()
+
+        return redirect(checkout_session.url, code=303)
+
     return render_template('public/checkout.html', customer=Customer.query.get(session['customer_id']))
 
 @app.route('/success/<order_number>')
 def order_success(order_number):
     order = Order.query.filter_by(order_number=order_number).first_or_404()
+
+    session_id = request.args.get('session_id')
+    if session_id and order.payment_status != 'paid' and stripe.api_key:
+        try:
+            checkout_session = stripe.checkout.Session.retrieve(session_id)
+            if checkout_session.payment_status == 'paid':
+                order.payment_status = 'paid'
+                order.status = 'confirmed'
+                order.stripe_payment_intent_id = checkout_session.payment_intent
+                db.session.commit()
+        except Exception:
+            pass
+
     return render_template('public/success.html', order=order)
+
+@app.route('/stripe/webhook', methods=['POST'])
+@csrf.exempt
+def stripe_webhook():
+    """Reçoit les confirmations de paiement de Stripe.
+    Source de vérité fiable même si le client ferme son navigateur
+    avant la redirection vers la page de succès."""
+    payload = request.get_data()
+    sig_header = request.headers.get('Stripe-Signature', '')
+
+    if not STRIPE_WEBHOOK_SECRET:
+        return '', 400
+
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+    except (ValueError, stripe.error.SignatureVerificationError):
+        return '', 400
+
+    if event['type'] == 'checkout.session.completed':
+        session_obj = event['data']['object']
+        order_number = session_obj.get('client_reference_id')
+        order = Order.query.filter_by(order_number=order_number).first()
+        if order and order.payment_status != 'paid':
+            order.payment_status = 'paid'
+            order.status = 'confirmed'
+            order.stripe_payment_intent_id = session_obj.get('payment_intent')
+            db.session.commit()
+
+    return '', 200
 
 @app.route('/newsletter/subscribe', methods=['POST'])
 @limiter.limit("5 per hour")
