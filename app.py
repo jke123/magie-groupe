@@ -1216,6 +1216,28 @@ def admin_settings():
 def setup_database_once():
     db.create_all()
 
+    # db.create_all() ne modifie JAMAIS les tables déjà existantes — il ne fait
+    # que créer les nouvelles. Ces colonnes ont été ajoutées aux modèles après
+    # la création initiale des tables 'order' et 'user' : on les ajoute ici
+    # manuellement si elles manquent encore. Sûr à rejouer plusieurs fois.
+    from sqlalchemy import text
+    migrations = [
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS customer_id INTEGER',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS stripe_payment_intent_id VARCHAR(200)',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS stripe_session_id VARCHAR(200)',
+        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS failed_attempts INTEGER DEFAULT 0',
+        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP',
+    ]
+    migration_log = []
+    for stmt in migrations:
+        try:
+            db.session.execute(text(stmt))
+            db.session.commit()
+            migration_log.append(f"OK: {stmt}")
+        except Exception as e:
+            db.session.rollback()
+            migration_log.append(f"SKIP ({e.__class__.__name__}): {stmt}")
+
     if not User.query.filter_by(username='admin').first():
         admin = User(
             username='admin',
@@ -1240,8 +1262,9 @@ def setup_database_once():
 
     db.session.commit()
     return (
-        "Base de donnees initialisee avec succes. "
-        "Compte admin : admin / MagieGroupe2025! "
+        "Base de donnees initialisee et migree avec succes.<br><br>" +
+        "<br>".join(migration_log) +
+        "<br><br>Compte admin : admin / MagieGroupe2025! " +
         "IMPORTANT : supprimez maintenant cette route de app.py et changez le mot de passe admin.",
         200
     )
