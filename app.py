@@ -215,6 +215,8 @@ class Order(db.Model):
     stripe_payment_intent_id = db.Column(db.String(200), nullable=True)
     stripe_session_id = db.Column(db.String(200), nullable=True)
     items = db.Column(db.Text)
+    stock_deducted = db.Column(db.Boolean, default=False)
+    received_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Appointment(db.Model):
@@ -370,6 +372,134 @@ def send_newsletter_email(to_email, subject, content):
     except Exception as e:
         print(f"Erreur envoi email: {e}")
         return False
+
+def create_transactional_email_template(subject, content_html):
+    """Template email pour les emails transactionnels (confirmations, reçus) —
+    sans lien de désabonnement, contrairement aux emails de newsletter."""
+    site_name = get_setting('site_name', 'Magie Groupe')
+    phone = get_setting('phone', '')
+    email = get_setting('email', '')
+    return f"""
+    <!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>{subject}</title></head>
+    <body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f5f3ee;">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px;">
+    <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.1);">
+    <tr><td style="background:#c9a84c;padding:3px;"></td></tr>
+    <tr><td style="padding:40px 40px 20px;text-align:center;">
+    <h1 style="margin:0;color:#0a0a0a;font-size:32px;">{site_name.upper()}</h1>
+    </td></tr>
+    <tr><td style="padding:20px 40px 40px;color:#1a1a1a;font-size:15px;line-height:1.6;">{content_html}</td></tr>
+    <tr><td style="padding:0 40px;"><hr style="border:none;border-top:1px solid #e0e0e0;"></td></tr>
+    <tr><td style="padding:30px 40px;text-align:center;color:#888;font-size:13px;">
+    <p>{site_name}<br>{phone} | {email}</p>
+    </td></tr>
+    <tr><td style="background:#c9a84c;padding:3px;"></td></tr>
+    </table></td></tr></table></body></html>
+    """
+
+def send_transactional_email(to_email, subject, content_html, content_plain):
+    """Envoie un email transactionnel. Retourne True/False selon le succès réel —
+    ne jamais annoncer un envoi qui n'a pas vraiment eu lieu."""
+    if not SMTP_USERNAME or not SMTP_PASSWORD:
+        return False
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>"
+        msg['To'] = to_email
+        msg.attach(MIMEText(content_plain, 'plain'))
+        msg.attach(MIMEText(create_transactional_email_template(subject, content_html), 'html'))
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        print(f"Erreur envoi email transactionnel: {e}")
+        return False
+
+def build_order_items_html(order):
+    try:
+        items = json.loads(order.items) if order.items else []
+    except (json.JSONDecodeError, TypeError):
+        items = []
+    rows = ""
+    for item in items:
+        subtotal = item.get('price', 0) * item.get('quantity', 1)
+        rows += f"""<tr>
+            <td style="padding:8px;border-bottom:1px solid #eee;">{item.get('name','')}</td>
+            <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">{item.get('quantity',1)}</td>
+            <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">{item.get('price',0)} €</td>
+            <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">{subtotal:.2f} €</td>
+        </tr>"""
+    return f"""<table width="100%" style="border-collapse:collapse;margin:16px 0;font-size:14px;">
+        <tr style="background:#f5f3ee;"><th style="padding:8px;text-align:left;">Produit</th><th style="padding:8px;">Qté</th><th style="padding:8px;text-align:right;">Prix</th><th style="padding:8px;text-align:right;">Sous-total</th></tr>
+        {rows}
+    </table>"""
+
+def send_order_confirmation_email(order):
+    """Email envoyé juste après confirmation du paiement."""
+    items_html = build_order_items_html(order)
+    payment_label = 'Carte bancaire (Stripe)' if order.payment_status == 'paid' else 'En attente'
+    content_html = f"""
+    <h2 style="margin-top:0;">Confirmation de votre commande</h2>
+    <p>Bonjour {order.customer_name},</p>
+    <p>Nous avons bien reçu votre paiement. Voici le récapitulatif de votre commande :</p>
+    <p><strong>Numéro de commande :</strong> {order.order_number}<br>
+    <strong>Date :</strong> {order.created_at.strftime('%d/%m/%Y à %H:%M')}<br>
+    <strong>Mode de paiement :</strong> {payment_label}<br>
+    <strong>Statut du paiement :</strong> Payé</p>
+    {items_html}
+    <p style="font-size:18px;font-weight:bold;text-align:right;">Total : {order.total} €</p>
+    <p>Merci pour votre confiance !</p>
+    """
+    content_plain = (
+        f"Confirmation de commande {order.order_number}\n"
+        f"Total : {order.total} €\n"
+        f"Mode de paiement : {payment_label}\n"
+        f"Statut : Payé\n"
+    )
+    return send_transactional_email(order.customer_email, f"Confirmation de votre commande {order.order_number}", content_html, content_plain)
+
+def send_delivery_receipt_email(order):
+    """Reçu d'achat envoyé quand l'admin marque la commande comme livrée."""
+    items_html = build_order_items_html(order)
+    payment_label = 'Carte bancaire (Stripe)' if order.payment_status == 'paid' else order.payment_status
+    content_html = f"""
+    <h2 style="margin-top:0;">Reçu d'achat — Commande livrée</h2>
+    <p>Bonjour {order.customer_name},</p>
+    <p>Votre commande a été livrée. Voici votre reçu d'achat :</p>
+    <p><strong>Numéro de commande :</strong> {order.order_number}<br>
+    <strong>Client :</strong> {order.customer_name} — {order.customer_email}<br>
+    <strong>Adresse :</strong> {order.customer_address or '—'}<br>
+    <strong>Date de commande :</strong> {order.created_at.strftime('%d/%m/%Y à %H:%M')}<br>
+    <strong>Mode de paiement :</strong> {payment_label}<br>
+    <strong>Statut :</strong> Livrée</p>
+    {items_html}
+    <p style="font-size:18px;font-weight:bold;text-align:right;">Total payé : {order.total} €</p>
+    <p>Merci pour votre confiance, à bientôt !</p>
+    """
+    content_plain = f"Reçu d'achat — Commande {order.order_number} livrée. Total : {order.total} €"
+    return send_transactional_email(order.customer_email, f"Votre reçu d'achat — Commande {order.order_number}", content_html, content_plain)
+
+def deduct_stock_for_order(order):
+    """Diminue le stock des produits d'une commande, une seule fois (idempotent).
+    Empêche le stock de descendre sous zéro même en cas d'achats simultanés."""
+    if order.stock_deducted:
+        return
+    try:
+        items = json.loads(order.items) if order.items else []
+    except (json.JSONDecodeError, TypeError):
+        items = []
+    for item in items:
+        product = Product.query.get(item.get('id'))
+        if not product:
+            continue
+        qty = int(item.get('quantity', 1))
+        product.stock = max(0, product.stock - qty)
+    order.stock_deducted = True
+    db.session.commit()
 
 # ==================== SEO ====================
 
@@ -597,6 +727,18 @@ def account_order_detail(order_number):
         items = []
     return render_template('public/account_order_detail.html', order=order, items=items)
 
+@app.route('/compte/commande/<order_number>/recu', methods=['POST'])
+@customer_login_required
+def account_confirm_reception(order_number):
+    customer = Customer.query.get(session['customer_id'])
+    order = Order.query.filter_by(order_number=order_number, customer_id=customer.id).first_or_404()
+    order.received_at = datetime.utcnow()
+    if order.status == 'shipped':
+        order.status = 'delivered'
+    db.session.commit()
+    flash('Merci d\'avoir confirmé la réception de votre commande !', 'success')
+    return redirect(url_for('account_order_detail', order_number=order_number))
+
 @app.route('/compte/messages', methods=['GET', 'POST'])
 @customer_login_required
 def account_messages():
@@ -621,8 +763,8 @@ def account_messages():
 @customer_login_required
 def checkout():
     if request.method == 'POST':
-        # Validation serveur des articles et prix — ne JAMAIS faire confiance
-        # aux prix envoyés par le navigateur quand de l'argent réel est en jeu.
+        # Validation serveur des articles, prix ET stock — ne JAMAIS faire confiance
+        # aux données envoyées par le navigateur quand de l'argent réel est en jeu.
         try:
             raw_items = json.loads(request.form.get('items', '[]'))
         except (json.JSONDecodeError, TypeError):
@@ -630,11 +772,15 @@ def checkout():
 
         validated_items = []
         total = 0.0
+        stock_errors = []
         for raw in raw_items:
             product = Product.query.get(raw.get('id'))
             if not product:
                 continue
             qty = max(1, int(raw.get('quantity', 1)))
+            if qty > product.stock:
+                stock_errors.append(f"{product.name} : seulement {product.stock} en stock (demandé : {qty})")
+                continue
             validated_items.append({
                 'id': product.id,
                 'name': product.name,
@@ -643,6 +789,10 @@ def checkout():
                 'quantity': qty
             })
             total += product.price * qty
+
+        if stock_errors:
+            flash('Stock insuffisant pour : ' + ' ; '.join(stock_errors), 'error')
+            return redirect(url_for('panier'))
 
         if not validated_items:
             flash('Votre panier est vide ou invalide', 'error')
@@ -666,6 +816,8 @@ def checkout():
         # Si Stripe n'est pas configuré (clé manquante), on garde un mode dégradé
         # pour ne jamais bloquer complètement le site en attendant la config.
         if not stripe.api_key:
+            print("STRIPE: clé API absente — mode dégradé activé pour la commande", order.order_number)
+            deduct_stock_for_order(order)
             flash('Le paiement en ligne n\'est pas encore configuré. Votre commande a été enregistrée, notre équipe vous contactera.', 'info')
             return redirect(url_for('order_success', order_number=order.order_number))
 
@@ -687,7 +839,9 @@ def checkout():
                 customer_email=order.customer_email,
                 client_reference_id=order.order_number,
             )
+            print("STRIPE: session créée", checkout_session.id, "pour commande", order.order_number)
         except Exception as e:
+            print("STRIPE: erreur création session —", repr(e))
             flash(f"Erreur lors de la création du paiement : {e}", 'error')
             return redirect(url_for('checkout'))
 
@@ -706,15 +860,21 @@ def order_success(order_number):
     if session_id and order.payment_status != 'paid' and stripe.api_key:
         try:
             checkout_session = stripe.checkout.Session.retrieve(session_id)
+            print("STRIPE: vérification session", session_id, "-> payment_status =", checkout_session.payment_status)
             if checkout_session.payment_status == 'paid':
                 order.payment_status = 'paid'
                 order.status = 'confirmed'
                 order.stripe_payment_intent_id = checkout_session.payment_intent
                 db.session.commit()
-        except Exception:
-            pass
+                deduct_stock_for_order(order)
+        except Exception as e:
+            print("STRIPE: erreur vérification session —", repr(e))
 
-    return render_template('public/success.html', order=order)
+    email_sent = False
+    if order.payment_status == 'paid':
+        email_sent = send_order_confirmation_email(order)
+
+    return render_template('public/success.html', order=order, email_sent=email_sent)
 
 @app.route('/stripe/webhook', methods=['POST'])
 @csrf.exempt
@@ -726,12 +886,16 @@ def stripe_webhook():
     sig_header = request.headers.get('Stripe-Signature', '')
 
     if not STRIPE_WEBHOOK_SECRET:
+        print("STRIPE WEBHOOK: reçu mais STRIPE_WEBHOOK_SECRET absent — ignoré")
         return '', 400
 
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
-    except (ValueError, stripe.error.SignatureVerificationError):
+    except (ValueError, stripe.error.SignatureVerificationError) as e:
+        print("STRIPE WEBHOOK: signature invalide —", repr(e))
         return '', 400
+
+    print("STRIPE WEBHOOK: événement reçu —", event['type'])
 
     if event['type'] == 'checkout.session.completed':
         session_obj = event['data']['object']
@@ -742,6 +906,8 @@ def stripe_webhook():
             order.status = 'confirmed'
             order.stripe_payment_intent_id = session_obj.get('payment_intent')
             db.session.commit()
+            deduct_stock_for_order(order)
+            send_order_confirmation_email(order)
 
     return '', 200
 
@@ -882,6 +1048,29 @@ def admin_change_password():
 @login_required
 def admin_products():
     return render_template('admin/products.html', products=Product.query.all())
+
+@app.route('/admin/products/stock-critique')
+@login_required
+def admin_stock_critique():
+    try:
+        seuil = int(get_setting('stock_seuil_critique', '5'))
+    except (ValueError, TypeError):
+        seuil = 5
+    produits_critiques = Product.query.filter(Product.stock <= seuil).order_by(Product.stock.asc()).all()
+    return render_template('admin/stock_critique.html', produits=produits_critiques, seuil=seuil)
+
+@app.route('/admin/products/stock-critique/seuil', methods=['POST'])
+@login_required
+def admin_update_seuil_critique():
+    valeur = request.form.get('seuil', '5')
+    setting = Setting.query.filter_by(key='stock_seuil_critique').first()
+    if setting:
+        setting.value = valeur
+    else:
+        db.session.add(Setting(key='stock_seuil_critique', value=valeur))
+    db.session.commit()
+    flash('Seuil de stock critique mis à jour', 'success')
+    return redirect(url_for('admin_stock_critique'))
 
 @app.route('/admin/products/new', methods=['GET', 'POST'])
 @login_required
@@ -1025,9 +1214,20 @@ def admin_order_detail(id):
 @login_required
 def admin_update_order_status(id):
     order = Order.query.get_or_404(id)
-    order.status = request.form.get('status')
+    new_status = request.form.get('status')
+    was_delivered_before = order.status == 'delivered'
+    order.status = new_status
     db.session.commit()
-    flash('Statut de commande mis à jour', 'success')
+
+    if new_status == 'delivered' and not was_delivered_before:
+        sent = send_delivery_receipt_email(order)
+        if sent:
+            flash('Statut mis à jour, reçu envoyé par email au client', 'success')
+        else:
+            flash('Statut mis à jour, mais l\'envoi du reçu par email a échoué (SMTP non configuré ?)', 'info')
+    else:
+        flash('Statut de commande mis à jour', 'success')
+
     return redirect(url_for('admin_order_detail', id=id))
 
 @app.route('/admin/orders/delete/<int:id>', methods=['POST'])
