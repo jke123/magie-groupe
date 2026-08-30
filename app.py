@@ -1414,6 +1414,40 @@ def admin_delete_campaign(id):
     flash('Campagne supprimée avec succès', 'success')
     return redirect(url_for('admin_campaigns'))
 
+@app.route('/admin/payments', methods=['GET'])
+@login_required
+def admin_payments():
+    """Affiche l'historique des paiements Stripe."""
+    if not stripe.api_key:
+        flash('Stripe non configuré', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    try:
+        # Récupère les 50 derniers paiements
+        charges = stripe.Charge.list(limit=50)
+        
+        # Format pour affichage
+        payments = []
+        for charge in charges.data:
+            payments.append({
+                'id': charge.id,
+                'amount': charge.amount / 100,  # Convertir de cents en euros
+                'currency': charge.currency.upper(),
+                'status': charge.status,
+                'customer': charge.customer,
+                'created': charge.created,
+                'description': charge.description,
+                'paid': charge.paid,
+                'refunded': charge.refunded
+            })
+        
+        return render_template('admin/payments.html', payments=payments)
+    except Exception as e:
+        print(f"❌ Erreur récupération charges Stripe : {e}")
+        flash('Erreur accès Stripe', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+        
 # ---------- Settings ----------
 
 @app.route('/admin/settings', methods=['GET', 'POST'])
