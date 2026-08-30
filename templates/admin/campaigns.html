@@ -46,6 +46,7 @@
                     <td class="actions-cell">
                         {% if campaign.status == 'draft' %}
                         <form method="POST" action="{{ url_for('admin_send_campaign', id=campaign.id) }}" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir envoyer cette campagne ?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-primary" title="Envoyer">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
