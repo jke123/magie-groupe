@@ -759,7 +759,7 @@ def account_messages():
     return render_template('public/account_messages.html', customer=customer, messages=messages)
 
 @app.route('/checkout', methods=['GET', 'POST'])
-@limiter.limit("10 per hour")
+@limiter.limit("30 per hour")
 @customer_login_required
 def checkout():
     if request.method == 'POST':
@@ -1425,6 +1425,8 @@ def setup_database_once():
         'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS customer_id INTEGER',
         'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS stripe_payment_intent_id VARCHAR(200)',
         'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS stripe_session_id VARCHAR(200)',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS stock_deducted BOOLEAN DEFAULT FALSE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS received_at TIMESTAMP',
         'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS failed_attempts INTEGER DEFAULT 0',
         'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP',
     ]
