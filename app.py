@@ -1414,6 +1414,8 @@ def admin_delete_campaign(id):
     flash('Campagne supprimée avec succès', 'success')
     return redirect(url_for('admin_campaigns'))
 
+# ---------- Payments (Stripe) ----------
+
 @app.route('/admin/payments', methods=['GET'])
 @login_required
 def admin_payments():
@@ -1434,9 +1436,9 @@ def admin_payments():
                 'amount': charge.amount / 100,  # Convertir de cents en euros
                 'currency': charge.currency.upper(),
                 'status': charge.status,
-                'customer': charge.customer,
+                'customer': charge.customer or 'N/A',
                 'created': charge.created,
-                'description': charge.description,
+                'description': charge.description or 'N/A',
                 'paid': charge.paid,
                 'refunded': charge.refunded
             })
@@ -1444,9 +1446,8 @@ def admin_payments():
         return render_template('admin/payments.html', payments=payments)
     except Exception as e:
         print(f"❌ Erreur récupération charges Stripe : {e}")
-        flash('Erreur accès Stripe', 'error')
+        flash(f'Erreur accès Stripe : {e}', 'error')
         return redirect(url_for('admin_dashboard'))
-
         
 # ---------- Settings ----------
 
