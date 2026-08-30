@@ -873,19 +873,22 @@ def order_success(order_number):
     if session_id and order.payment_status != 'paid' and stripe.api_key:
         try:
             checkout_session = stripe.checkout.Session.retrieve(session_id)
-            print("STRIPE: vérification session", session_id, "-> payment_status =", checkout_session.payment_status)
+            print(f"✅ STRIPE: vérification session {session_id} -> payment_status = {checkout_session.payment_status}")
             if checkout_session.payment_status == 'paid':
                 order.payment_status = 'paid'
                 order.status = 'confirmed'
                 order.stripe_payment_intent_id = checkout_session.payment_intent
                 db.session.commit()
                 deduct_stock_for_order(order)
+                print(f"✅ Commande {order_number} confirmée via session Stripe")
         except Exception as e:
-            print("STRIPE: erreur vérification session —", repr(e))
+            print(f"❌ STRIPE: erreur vérification session — {repr(e)}")
 
     email_sent = False
     if order.payment_status == 'paid':
         email_sent = send_order_confirmation_email(order)
+        if not email_sent:
+            print(f"⚠️  Email de confirmation NOT SENT pour commande {order_number} (SMTP non configuré ?)")
 
     return render_template('public/success.html', order=order, email_sent=email_sent)
 
@@ -894,21 +897,27 @@ def order_success(order_number):
 def stripe_webhook():
     """Reçoit les confirmations de paiement de Stripe.
     Source de vérité fiable même si le client ferme son navigateur
-    avant la redirection vers la page de succès."""
+    avant la redirection vers la page de succès.
+    
+    ⚠️ CRITIQUE : STRIPE_WEBHOOK_SECRET DOIT être défini en production !
+    """
     payload = request.get_data()
     sig_header = request.headers.get('Stripe-Signature', '')
 
     if not STRIPE_WEBHOOK_SECRET:
-        print("STRIPE WEBHOOK: reçu mais STRIPE_WEBHOOK_SECRET absent — ignoré")
-        return '', 400
+        print("❌ STRIPE WEBHOOK: STRIPE_WEBHOOK_SECRET absent — webhook IGNORÉ")
+        return {'error': 'Webhook secret not configured'}, 403
 
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
-    except (ValueError, stripe.error.SignatureVerificationError) as e:
-        print("STRIPE WEBHOOK: signature invalide —", repr(e))
+    except ValueError as e:
+        print(f"❌ STRIPE WEBHOOK: payload invalide — {repr(e)}")
+        return '', 400
+    except stripe.error.SignatureVerificationError as e:
+        print(f"❌ STRIPE WEBHOOK: signature invalide — {repr(e)}")
         return '', 400
 
-    print("STRIPE WEBHOOK: événement reçu —", event['type'])
+    print(f"✅ STRIPE WEBHOOK: événement reçu — {event['type']}")
 
     if event['type'] == 'checkout.session.completed':
         session_obj = event['data']['object']
@@ -920,10 +929,16 @@ def stripe_webhook():
             order.stripe_payment_intent_id = session_obj.get('payment_intent')
             db.session.commit()
             deduct_stock_for_order(order)
-            send_order_confirmation_email(order)
+            email_sent = send_order_confirmation_email(order)
+            if email_sent:
+                print(f"✅ Commande {order_number} confirmée + email envoyé via webhook")
+            else:
+                print(f"⚠️  Commande {order_number} confirmée mais email NOT SENT")
+        else:
+            print(f"⚠️  Webhook reçu mais commande {order_number} introuvable ou déjà payée")
 
     return '', 200
-
+    
 @app.route('/newsletter/subscribe', methods=['POST'])
 @limiter.limit("5 per hour")
 def newsletter_subscribe():
