@@ -81,7 +81,8 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 }
 
 # ==================== SÉCURITÉ ====================
-app.config['SESSION_COOKIE_SECURE'] = True       # cookie envoyé uniquement en HTTPS
+# En dev (localhost), désactiver SECURE pour tester en HTTP. En prod sur Vercel, toujours HTTPS.
+app.config['SESSION_COOKIE_SECURE'] = not app.debug
 app.config['SESSION_COOKIE_HTTPONLY'] = True     # inaccessible en JS (anti XSS)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'    # anti CSRF basique
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=4)
