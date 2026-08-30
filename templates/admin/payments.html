@@ -27,8 +27,8 @@
             <tbody>
                 {% for payment in payments %}
                 <tr>
-                    <td><code style="font-size:11px;">{{ payment.id }}</code></td>
-                    <td><strong>{{ "%.2f"|format(payment.amount) }}</strong></td>
+                    <td><code style="font-size:11px;">{{ payment.id[:20] }}...</code></td>
+                    <td><strong>{{ "%.2f"|format(payment.amount) }} €</strong></td>
                     <td>{{ payment.currency }}</td>
                     <td>
                         <span class="badge badge-{{ 'success' if payment.status == 'succeeded' else 'warning' }}">
@@ -43,7 +43,7 @@
                         <i class="fas fa-{{ 'check' if payment.refunded else 'times' }}" 
                            style="color:{{ 'orange' if payment.refunded else 'green' }};font-size:16px;"></i>
                     </td>
-                    <td>{{ payment.created | strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td>{{ payment.created_formatted }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
