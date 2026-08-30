@@ -120,13 +120,24 @@ def upload_image(file):
     """Upload une image vers Cloudinary, retourne l'URL sécurisée ou None"""
     if not file or file.filename == '':
         return None
+    
+    # Vérifier que Cloudinary est configuré
+    if not os.environ.get('CLOUDINARY_CLOUD_NAME'):
+        print("⚠️  CLOUDINARY non configuré - image non uploadée")
+        return None
+    
     allowed = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
     ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
     if ext not in allowed:
+        print(f"❌ Extension non autorisée : {ext}")
         return None
-    result = cloudinary.uploader.upload(file, folder="magie-groupe")
-    return result.get('secure_url')
-
+    
+    try:
+        result = cloudinary.uploader.upload(file, folder="magie-groupe")
+        return result.get('secure_url')
+    except Exception as e:
+        print(f"❌ Erreur upload Cloudinary : {e}")
+        return None
 def delete_image(image_url):
     """Supprime une image Cloudinary à partir de son URL"""
     if not image_url or 'cloudinary.com' not in image_url:
@@ -759,8 +770,9 @@ def account_messages():
     messages = ConversationMessage.query.filter_by(customer_id=customer.id).order_by(ConversationMessage.created_at.asc()).all()
     return render_template('public/account_messages.html', customer=customer, messages=messages)
 
+
 @app.route('/checkout', methods=['GET', 'POST'])
-@limiter.limit("30 per hour")
+@limiter.limit("10 per hour")
 @customer_login_required
 def checkout():
     if request.method == 'POST':
@@ -814,12 +826,10 @@ def checkout():
         db.session.add(order)
         db.session.commit()
 
-        # Si Stripe n'est pas configuré (clé manquante), on garde un mode dégradé
-        # pour ne jamais bloquer complètement le site en attendant la config.
+        # ⚠️ VÉRIFICATION STRIPE - CRITIQUE
         if not stripe.api_key:
-            print("STRIPE: clé API absente — mode dégradé activé pour la commande", order.order_number)
-            deduct_stock_for_order(order)
-            flash('Le paiement en ligne n\'est pas encore configuré. Votre commande a été enregistrée, notre équipe vous contactera.', 'info')
+            print(f"❌ STRIPE: clé API absente — mode dégradé pour commande {order.order_number}")
+            flash('⚠️ Paiement Stripe non configuré. Votre commande a été enregistrée en mode manuel. L\'équipe vous contactera.', 'warning')
             return redirect(url_for('order_success', order_number=order.order_number))
 
         line_items = [{
@@ -840,10 +850,12 @@ def checkout():
                 customer_email=order.customer_email,
                 client_reference_id=order.order_number,
             )
-            print("STRIPE: session créée", checkout_session.id, "pour commande", order.order_number)
+            print(f"✅ STRIPE: session créée {checkout_session.id} pour commande {order.order_number}")
         except Exception as e:
-            print("STRIPE: erreur création session —", repr(e))
-            flash(f"Erreur lors de la création du paiement : {e}", 'error')
+            print(f"❌ STRIPE: erreur création session — {repr(e)}")
+            flash(f"Erreur paiement Stripe : {e}", 'error')
+            order.status = 'cancelled'
+            db.session.commit()
             return redirect(url_for('checkout'))
 
         order.stripe_session_id = checkout_session.id
