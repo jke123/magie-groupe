@@ -1474,7 +1474,26 @@ def admin_payments():
         print(f"❌ Erreur récupération charges Stripe : {e}")
         flash(f'Erreur accès Stripe : {e}', 'error')
         return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/revenue', methods=['GET'])
+@login_required
+def admin_revenue():
+    """Affiche le revenu total des commandes payées."""
+    try:
+        paid_orders = Order.query.filter_by(payment_status='paid').all()
+        total_revenue = sum(order.total for order in paid_orders)
+        order_count = len(paid_orders)
         
+        return render_template('admin/revenue.html', 
+                             total_revenue=total_revenue,
+                             order_count=order_count,
+                             orders=paid_orders)
+    except Exception as e:
+        print(f"❌ Erreur calcul revenu : {e}")
+        flash('Erreur lors du calcul du revenu', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+    
 # ==================== INITIALISATION BASE DE DONNÉES (TEMPORAIRE) ====================
 # À VISITER UNE SEULE FOIS depuis le navigateur, puis à SUPPRIMER de app.py.
 # URL volontairement longue/aléatoire pour éviter tout accès non désiré.
@@ -1542,4 +1561,25 @@ def setup_database_once():
 # Vercel importe directement la variable `app` de ce fichier — rien de plus à faire.
 
 if __name__ == '__main__':
+    # ⚠️ Vérifications critiques pour la production
+    print("\n" + "="*60)
+    print("🚀 DÉMARRAGE MAGIE GROUPE")
+    print("="*60)
+    
+    mode = "🔴 LIVE MODE (Production)" if stripe.api_key and stripe.api_key.startswith('sk_live') else "🔵 TEST MODE"
+    print(f"Stripe: {mode}")
+    
+    db_configured = os.environ.get('DATABASE_URL') is not None
+    stripe_configured = bool(stripe.api_key)
+    webhook_configured = bool(STRIPE_WEBHOOK_SECRET)
+    
+    print(f"Database: {'✅ Configuré' if db_configured else '❌ MANQUANT'}")
+    print(f"Stripe API: {'✅ Configuré' if stripe_configured else '❌ MANQUANT'}")
+    print(f"Webhook Secret: {'✅ Configuré' if webhook_configured else '❌ MANQUANT'}")
+    
+    if not (db_configured and stripe_configured and webhook_configured):
+        print("\n⚠️  ATTENTION : Certaines variables d'environnement sont manquantes !")
+    
+    print("="*60 + "\n")
+    
     app.run(debug=False, host='0.0.0.0', port=5000)
