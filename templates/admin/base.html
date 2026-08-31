@@ -39,7 +39,10 @@
             <i class="fas fa-shopping-cart"></i> Commandes
         </a>
         <a href="{{ url_for('admin_payments') }}" {% if request.endpoint == 'admin_payments' %}class="active"{% endif %}>
-    <i class="fas fa-credit-card"></i> Paiements Stripe
+            <i class="fas fa-credit-card"></i> Paiements Stripe
+        </a>
+        <a href="{{ url_for('admin_revenue') }}">
+            <i class="fas fa-chart-line"></i> Revenue
         </a>
         <a href="{{ url_for('admin_customers') }}" {% if 'customer' in request.endpoint %}class="active"{% endif %}>
             <i class="fas fa-user-circle"></i> Clients
