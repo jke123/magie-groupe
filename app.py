@@ -41,6 +41,29 @@ app.jinja_loader = ChoiceLoader([
     DictLoader(TEMPLATES)
 ])
 
+# ==================== CACHE SETTINGS ====================
+from functools import lru_cache
+import threading
+
+_settings_cache = {}
+_settings_cache_time = 0
+_settings_cache_lock = threading.Lock()
+SETTINGS_CACHE_TTL = 300  # 5 minutes
+
+def get_settings_cached():
+    """Récupère les settings avec cache de 5 minutes"""
+    global _settings_cache, _settings_cache_time
+    
+    current_time = datetime.utcnow().timestamp()
+    if _settings_cache and (current_time - _settings_cache_time) < SETTINGS_CACHE_TTL:
+        return _settings_cache
+    
+    with _settings_cache_lock:
+        _settings_cache = {s.key: s.value for s in Setting.query.all()}
+        _settings_cache_time = current_time
+    
+    return _settings_cache
+    
 def embedded_static(filename):
     """Sert les fichiers statiques : d'abord depuis le disque, sinon depuis les
     modules embarqués (STATIC_FILES pour le texte CSS/JS, STATIC_BINARY_FILES
@@ -187,7 +210,7 @@ class User(db.Model):
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
-    slug = db.Column(db.String(200), unique=True, nullable=False)
+    slug = db.Column(db.String(200), unique=True, nullable=False, index=True)
     description = db.Column(db.Text)
     price = db.Column(db.Float, nullable=False)
     category = db.Column(db.String(100))
@@ -210,10 +233,22 @@ class Project(db.Model):
     featured = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class ProductReview(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=True, index=True)
+    customer_name = db.Column(db.String(200), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)  # 1-5 étoiles
+    title = db.Column(db.String(200), nullable=False)
+    comment = db.Column(db.Text, nullable=False)
+    verified_purchase = db.Column(db.Boolean, default=False)  # Acheté via notre site
+    status = db.Column(db.String(50), default='pending')  # pending, approved, rejected
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
 class Customer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
-    email = db.Column(db.String(200), unique=True, nullable=False)
+    email = db.Column(db.String(200), unique=True, nullable=False, index=True)
     phone = db.Column(db.String(50))
     password_hash = db.Column(db.String(200), nullable=False)
     address = db.Column(db.Text)
@@ -229,10 +264,10 @@ class ConversationMessage(db.Model):
 
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    order_number = db.Column(db.String(50), unique=True, nullable=False)
-    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=True)
+    order_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=True, index=True)
     customer_name = db.Column(db.String(200), nullable=False)
-    customer_email = db.Column(db.String(200), nullable=False)
+    customer_email = db.Column(db.String(200), nullable=False, index=True)
     customer_phone = db.Column(db.String(50))
     customer_address = db.Column(db.Text)
     total = db.Column(db.Float, nullable=False)
@@ -269,7 +304,7 @@ class Contact(db.Model):
 
 class NewsletterSubscriber(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(200), unique=True, nullable=False)
+    email = db.Column(db.String(200), unique=True, nullable=False, index=True)
     category = db.Column(db.String(100), default='les_deux')
     status = db.Column(db.String(50), default='active')
     subscribed_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -320,10 +355,19 @@ def customer_login_required(f):
     return decorated_function
 
 def generate_order_number():
-    while True:
-        number = 'MG' + ''.join(random.choices(string.digits, k=8))
-        if not Order.query.filter_by(order_number=number).first():
-            return number
+    """Génère un numéro de commande unique avec timestamp pour éviter les collisions"""
+    import time
+    base = f"MG{int(time.time() * 1000)}"[-15:]  # Utiliser timestamp (unique)
+    # Ajouter un aléatoire pour plus de sécurité
+    suffix = ''.join(random.choices(string.digits, k=4))
+    number = f"{base}{suffix}"
+    
+    # Vérifier l'unicité
+    while Order.query.filter_by(order_number=number).first():
+        suffix = ''.join(random.choices(string.digits, k=4))
+        number = f"{base}{suffix}"
+    
+    return number
 
 def get_setting(key, default=''):
     setting = Setting.query.filter_by(key=key).first()
@@ -529,7 +573,7 @@ def deduct_stock_for_order(order):
 
 @app.context_processor
 def inject_globals():
-    settings = {s.key: s.value for s in Setting.query.all()}
+    settings = get_settings_cached()  # Utiliser le cache
     customer_logged_in = 'customer_id' in session
     customer_unread_count = 0
     if customer_logged_in:
@@ -550,7 +594,7 @@ def inject_globals():
         customer_name=session.get('customer_name', ''),
         customer_unread_count=customer_unread_count
     )
-
+    
 @app.route('/sitemap.xml')
 def sitemap():
     pages = []
@@ -594,6 +638,68 @@ def product_detail(slug):
     product = Product.query.filter_by(slug=slug).first_or_404()
     return render_template('public/product_detail.html', product=product)
 
+@app.route('/produits/<slug>/reviews', methods=['GET'])
+def product_reviews(slug):
+    """Affiche les avis d'un produit"""
+    product = Product.query.filter_by(slug=slug).first_or_404()
+    reviews = ProductReview.query.filter_by(product_id=product.id, status='approved').order_by(ProductReview.created_at.desc()).all()
+    avg_rating = 0
+    if reviews:
+        avg_rating = round(sum(r.rating for r in reviews) / len(reviews), 1)
+    return render_template('public/product_reviews.html', product=product, reviews=reviews, avg_rating=avg_rating)
+
+@app.route('/produits/<slug>/avis/ajouter', methods=['POST'])
+@customer_login_required
+@limiter.limit("3 per hour")
+def add_product_review(slug):
+    """Ajoute un avis sur un produit"""
+    product = Product.query.filter_by(slug=slug).first_or_404()
+    customer = Customer.query.get(session['customer_id'])
+    
+    rating = request.form.get('rating', 5)
+    try:
+        rating = int(rating)
+        if rating < 1 or rating > 5:
+            rating = 5
+    except (ValueError, TypeError):
+        rating = 5
+    
+    title = request.form.get('title', '').strip()
+    comment = request.form.get('comment', '').strip()
+    
+    if not title or not comment:
+        flash('Titre et commentaire requis', 'error')
+        return redirect(url_for('product_reviews', slug=slug))
+    
+    # Vérifier si l'utilisateur a acheté ce produit
+    verified_purchase = False
+    orders = Order.query.filter_by(customer_id=customer.id, payment_status='paid').all()
+    for order in orders:
+        try:
+            items = json.loads(order.items)
+            if any(item['id'] == product.id for item in items):
+                verified_purchase = True
+                break
+        except (json.JSONDecodeError, TypeError):
+            pass
+    
+    # Créer l'avis
+    review = ProductReview(
+        product_id=product.id,
+        customer_id=customer.id,
+        customer_name=customer.name,
+        rating=rating,
+        title=title,
+        comment=comment,
+        verified_purchase=verified_purchase,
+        status='pending'  # Modéré manuellement
+    )
+    db.session.add(review)
+    db.session.commit()
+    
+    flash('Merci pour votre avis ! Il sera publié après modération.', 'success')
+    return redirect(url_for('product_reviews', slug=slug))
+    
 @app.route('/portfolio')
 def portfolio():
     category = request.args.get('category')
@@ -1428,7 +1534,6 @@ def admin_delete_campaign(id):
 
     
 # ---------- Settings ----------
-
 @app.route('/admin/settings', methods=['GET', 'POST'])
 @login_required
 def admin_settings():
@@ -1443,12 +1548,18 @@ def admin_settings():
             else:
                 db.session.add(Setting(key=key, value=value))
         db.session.commit()
+        
+        # 🔄 Vider le cache
+        global _settings_cache, _settings_cache_time
+        _settings_cache = {}
+        _settings_cache_time = 0
+        
         flash('Paramètres mis à jour avec succès', 'success')
         return redirect(url_for('admin_settings'))
 
     settings = {s.key: s.value for s in Setting.query.all()}
     return render_template('admin/settings.html', settings=settings)
-
+    
 # ---------- Payments (Stripe) ----------
 
 @app.route('/admin/payments', methods=['GET'])
