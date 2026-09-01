@@ -256,12 +256,13 @@ class Customer(db.Model):
 
 class ConversationMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False, index=True)
     sender = db.Column(db.String(20), nullable=False)  # 'customer' ou 'admin'
     content = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
+    read_at = db.Column(db.DateTime, nullable=True)  # 🆕 Quand c'est lu
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
@@ -1261,8 +1262,12 @@ def admin_change_password():
 @app.route('/admin/products')
 @login_required
 def admin_products():
-    return render_template('admin/products.html', products=Product.query.all())
-
+    page = request.args.get('page', 1, type=int)
+    pagination = Product.query.paginate(page=page, per_page=20)
+    return render_template('admin/products.html', 
+                         products=pagination.items,
+                         pagination=pagination)
+                         
 @app.route('/admin/products/stock-critique')
 @login_required
 def admin_stock_critique():
