@@ -569,6 +569,32 @@ def deduct_stock_for_order(order):
     order.stock_deducted = True
     db.session.commit()
 
+def send_admin_new_order_email(order):
+    """Notifie l'admin d'une nouvelle commande"""
+    admin_email = get_setting('email', '')
+    if not admin_email:
+        return False
+    
+    try:
+        items_html = build_order_items_html(order)
+        content_html = f"""
+        <h2>🎉 Nouvelle commande reçue !</h2>
+        <p><strong>Numéro :</strong> {order.order_number}</p>
+        <p><strong>Client :</strong> {order.customer_name} ({order.customer_email})</p>
+        <p><strong>Montant :</strong> {order.total} €</p>
+        <p><strong>Status :</strong> {order.status}</p>
+        {items_html}
+        <p><a href="{url_for('admin_order_detail', id=order.id, _external=True)}" style="color:#c9a84c;font-weight:bold;">
+            Voir la commande →
+        </a></p>
+        """
+        content_plain = f"Nouvelle commande {order.order_number} ({order.total} €) de {order.customer_name}"
+        
+        return send_transactional_email(admin_email, f"🎉 Nouvelle commande {order.order_number}", content_html, content_plain)
+    except Exception as e:
+        print(f"❌ Erreur email admin : {e}")
+        return False
+        
 # ==================== SEO ====================
 
 @app.context_processor
@@ -1048,6 +1074,7 @@ def stripe_webhook():
             db.session.commit()
             deduct_stock_for_order(order)
             email_sent = send_order_confirmation_email(order)
+            send_admin_new_order_email(order)
             if email_sent:
                 print(f"✅ Commande {order_number} confirmée + email envoyé via webhook")
             else:
@@ -1159,6 +1186,47 @@ def admin_dashboard():
     }
     return render_template('admin/dashboard.html', stats=stats)
 
+@app.route('/admin/analytics')
+@login_required
+def admin_analytics():
+    """Affiche l'analytique des ventes"""
+    from sqlalchemy import func
+    
+    # Statistiques générales
+    total_orders = Order.query.filter_by(payment_status='paid').count()
+    total_revenue = db.session.query(func.sum(Order.total)).filter_by(payment_status='paid').scalar() or 0
+    avg_order_value = total_revenue / total_orders if total_orders > 0 else 0
+    
+    # Produits les plus vendus
+    top_products = {}
+    paid_orders = Order.query.filter_by(payment_status='paid').all()
+    for order in paid_orders:
+        try:
+            items = json.loads(order.items)
+            for item in items:
+                product_id = item.get('id')
+                qty = item.get('quantity', 1)
+                top_products[product_id] = top_products.get(product_id, 0) + qty
+        except (json.JSONDecodeError, TypeError):
+            pass
+    
+    top_products_list = []
+    for product_id, qty in sorted(top_products.items(), key=lambda x: x[1], reverse=True)[:10]:
+        product = Product.query.get(product_id)
+        if product:
+            top_products_list.append({'name': product.name, 'quantity': qty})
+    
+    # Conversion (panier → achat)
+    total_checkouts = Order.query.filter_by(payment_status='pending').count() + total_orders
+    conversion_rate = (total_orders / total_checkouts * 100) if total_checkouts > 0 else 0
+    
+    return render_template('admin/analytics.html',
+                         total_orders=total_orders,
+                         total_revenue=round(total_revenue, 2),
+                         avg_order_value=round(avg_order_value, 2),
+                         conversion_rate=round(conversion_rate, 1),
+                         top_products=top_products_list)
+                         
 @app.route('/admin/change-password', methods=['GET', 'POST'])
 @login_required
 def admin_change_password():
@@ -1275,6 +1343,43 @@ def admin_delete_product(id):
     flash('Produit supprimé avec succès', 'success')
     return redirect(url_for('admin_products'))
 
+# ---------- Product Reviews ----------
+
+@app.route('/admin/reviews', methods=['GET'])
+@login_required
+def admin_reviews():
+    """Liste tous les avis en attente de modération"""
+    pending = ProductReview.query.filter_by(status='pending').order_by(ProductReview.created_at.desc()).all()
+    approved = ProductReview.query.filter_by(status='approved').order_by(ProductReview.created_at.desc()).limit(50).all()
+    return render_template('admin/reviews.html', pending=pending, approved=approved)
+
+@app.route('/admin/reviews/<int:id>/approve', methods=['POST'])
+@login_required
+def admin_approve_review(id):
+    review = ProductReview.query.get_or_404(id)
+    review.status = 'approved'
+    db.session.commit()
+    flash('Avis approuvé', 'success')
+    return redirect(url_for('admin_reviews'))
+
+@app.route('/admin/reviews/<int:id>/reject', methods=['POST'])
+@login_required
+def admin_reject_review(id):
+    review = ProductReview.query.get_or_404(id)
+    review.status = 'rejected'
+    db.session.commit()
+    flash('Avis rejeté', 'success')
+    return redirect(url_for('admin_reviews'))
+
+@app.route('/admin/reviews/<int:id>/delete', methods=['POST'])
+@login_required
+def admin_delete_review(id):
+    review = ProductReview.query.get_or_404(id)
+    db.session.delete(review)
+    db.session.commit()
+    flash('Avis supprimé', 'success')
+    return redirect(url_for('admin_reviews'))
+    
 # ---------- Projects ----------
 
 @app.route('/admin/projects')
