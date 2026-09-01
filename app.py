@@ -1,13 +1,17 @@
 import os
 import ssl
 import json
+import re
+import base64
+import random
+import string
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, session, Response, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
 from functools import wraps
 from itsdangerous import URLSafeTimedSerializer
 from jinja2 import ChoiceLoader, DictLoader
@@ -21,6 +25,7 @@ import stripe
 from templates_data import TEMPLATES
 from static_data import STATIC_FILES
 from static_binary_data import STATIC_BINARY_FILES
+
 
 app = Flask(
     __name__,
@@ -51,7 +56,6 @@ def embedded_static(filename):
         return Response(STATIC_FILES[filename], mimetype=mime)
 
     if filename in STATIC_BINARY_FILES:
-        import base64
         ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
         mime_map = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
                     'svg': 'image/svg+xml', 'webp': 'image/webp', 'ico': 'image/x-icon', 'gif': 'image/gif'}
@@ -134,19 +138,29 @@ def upload_image(file):
     
     try:
         result = cloudinary.uploader.upload(file, folder="magie-groupe")
-        return result.get('secure_url')
+        url = result.get('secure_url')
+        print(f"✅ Image uploadée : {url[:50]}...")
+        return url
     except Exception as e:
         print(f"❌ Erreur upload Cloudinary : {e}")
         return None
+
 def delete_image(image_url):
     """Supprime une image Cloudinary à partir de son URL"""
     if not image_url or 'cloudinary.com' not in image_url:
         return
     try:
-        public_id = image_url.split('/')[-1].split('.')[0]
-        cloudinary.uploader.destroy(f"magie-groupe/{public_id}")
-    except Exception:
-        pass
+        # Extraire le public_id de manière robuste
+        parts = image_url.split('/')
+        filename_with_ext = parts[-1]  # e.g., "abc123.jpg"
+        public_id = filename_with_ext.rsplit('.', 1)[0]  # e.g., "abc123"
+        full_public_id = f"magie-groupe/{public_id}"
+        
+        cloudinary.uploader.destroy(full_public_id)
+        print(f"✅ Image supprimée : {full_public_id}")
+    except Exception as e:
+        print(f"⚠️  Erreur suppression image : {e}")
+        
 
 # ==================== NEWSLETTER : SMTP ====================
 SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
@@ -223,7 +237,7 @@ class Order(db.Model):
     customer_address = db.Column(db.Text)
     total = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='pending')
-    payment_status = db.Column(db.String(50), default='manual')  # préparé pour Stripe plus tard
+    payment_status = db.Column(db.String(50), default='pending')  # préparé pour Stripe plus tard
     stripe_payment_intent_id = db.Column(db.String(200), nullable=True)
     stripe_session_id = db.Column(db.String(200), nullable=True)
     items = db.Column(db.Text)
@@ -278,7 +292,6 @@ class Setting(db.Model):
 # ==================== UTILITAIRES ====================
 
 def slugify(text):
-    import re
     text = text.lower()
     replacements = {'à':'a','á':'a','â':'a','ã':'a','ä':'a','è':'e','é':'e','ê':'e','ë':'e',
                      'ì':'i','í':'i','î':'i','ï':'i','ò':'o','ó':'o','ô':'o','õ':'o','ö':'o',
@@ -307,7 +320,6 @@ def customer_login_required(f):
     return decorated_function
 
 def generate_order_number():
-    import random, string
     while True:
         number = 'MG' + ''.join(random.choices(string.digits, k=8))
         if not Order.query.filter_by(order_number=number).first():
@@ -1494,76 +1506,12 @@ def admin_revenue():
         return redirect(url_for('admin_dashboard'))
 
     
-# ==================== INITIALISATION BASE DE DONNÉES (TEMPORAIRE) ====================
-# À VISITER UNE SEULE FOIS depuis le navigateur, puis à SUPPRIMER de app.py.
-# URL volontairement longue/aléatoire pour éviter tout accès non désiré.
-
-@app.route('/setup-database-mg2026-x7k9p3')
-def setup_database_once():
-    db.create_all()
-
-    # db.create_all() ne modifie JAMAIS les tables déjà existantes — il ne fait
-    # que créer les nouvelles. Ces colonnes ont été ajoutées aux modèles après
-    # la création initiale des tables 'order' et 'user' : on les ajoute ici
-    # manuellement si elles manquent encore. Sûr à rejouer plusieurs fois.
-    from sqlalchemy import text
-    migrations = [
-        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS customer_id INTEGER',
-        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS stripe_payment_intent_id VARCHAR(200)',
-        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS stripe_session_id VARCHAR(200)',
-        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS stock_deducted BOOLEAN DEFAULT FALSE',
-        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS received_at TIMESTAMP',
-        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS failed_attempts INTEGER DEFAULT 0',
-        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP',
-    ]
-    migration_log = []
-    for stmt in migrations:
-        try:
-            db.session.execute(text(stmt))
-            db.session.commit()
-            migration_log.append(f"OK: {stmt}")
-        except Exception as e:
-            db.session.rollback()
-            migration_log.append(f"SKIP ({e.__class__.__name__}): {stmt}")
-
-    if not User.query.filter_by(username='admin').first():
-        admin = User(
-            username='admin',
-            password_hash=generate_password_hash('MagieGroupe2025!')
-        )
-        db.session.add(admin)
-
-    default_settings = {
-        'site_name': 'Magie Groupe',
-        'phone': '',
-        'email': '',
-        'address': '',
-        'whatsapp': '',
-        'instagram': '',
-        'facebook': '',
-        'tiktok': '',
-        'meta_description': 'Magie Groupe - Production audiovisuelle et boutique en ligne'
-    }
-    for key, value in default_settings.items():
-        if not Setting.query.filter_by(key=key).first():
-            db.session.add(Setting(key=key, value=value))
-
-    db.session.commit()
-    return (
-        "Base de donnees initialisee et migree avec succes.<br><br>" +
-        "<br>".join(migration_log) +
-        "<br><br>Compte admin : admin / MagieGroupe2025! " +
-        "IMPORTANT : supprimez maintenant cette route de app.py et changez le mot de passe admin.",
-        200
-    )
-
 # ==================== POINT D'ENTRÉE VERCEL ====================
 # Vercel importe directement la variable `app` de ce fichier — rien de plus à faire.
 
 if __name__ == '__main__':
-    # ⚠️ Vérifications critiques pour la production
     print("\n" + "="*60)
-    print("🚀 DÉMARRAGE MAGIE GROUPE")
+    print("🚀 DÉMARRAGE MAGIE GROUPE - PRODUCTION READY")
     print("="*60)
     
     mode = "🔴 LIVE MODE (Production)" if stripe.api_key and stripe.api_key.startswith('sk_live') else "🔵 TEST MODE"
