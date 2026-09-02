@@ -2,35 +2,37 @@ import os
 import ssl
 import json
 import re
+import time
 import base64
 import random
 import string
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, session, Response, make_response
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-depuis itsdangerous importer URLSafeTimedSerializer
+from itsdangerous import URLSafeTimedSerializer
 from jinja2 import ChoiceLoader, DictLoader
-importer smtplib
+import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-importer cloudinary
-importer cloudinary.uploader
-bande d'importation
+import cloudinary
+import cloudinary.uploader
+import stripe
 
 from templates_data import TEMPLATES
 from static_data import STATIC_FILES
 from static_binary_data import STATIC_BINARY_FILES
 
 
-application = Flask (
-    __nom__,
-    template_folder = os.path.join ( os.path.dirname ( os.path.abspath ( __ file__ ) ) , ' templates ' ) ,​​​​
-    static_folder = os.path.join ( os.path.dirname ( os.path.abspath ( __ file__ ) ) , ' static ' )​​​​
+app = Flask(
+    __name__,
+    template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'),
+    static_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 )
 
 # Les templates sont d'abord recherchés sur le disque (fonctionne en local),
@@ -191,11 +193,11 @@ class Product(db.Model):
     slug = db.Column(db.String(200), unique=True, nullable=False, index=True)
     description = db.Column(db.Text)
     price = db.Column(db.Float, nullable=False)
-    category = db.Column(db.String(100))
+    category = db.Column(db.String(100), index=True)
     location = db.Column(db.String(200))
     stock = db.Column(db.Integer, default=0)
     image = db.Column(db.String(500))  # URL Cloudinary complète désormais
-    featured = db.Column(db.Boolean, default=False)
+    featured = db.Column(db.Boolean, default=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Project(db.Model):
@@ -203,12 +205,12 @@ class Project(db.Model):
     title = db.Column(db.String(200), nullable=False)
     slug = db.Column(db.String(200), unique=True, nullable=False)
     description = db.Column(db.Text)
-    category = db.Column(db.String(100))
+    category = db.Column(db.String(100), index=True)
     client = db.Column(db.String(200))
     date = db.Column(db.String(100))
     image = db.Column(db.String(500))  # URL Cloudinary complète
     video_url = db.Column(db.String(500))
-    featured = db.Column(db.Boolean, default=False)
+    featured = db.Column(db.Boolean, default=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class ProductReview(db.Model):
@@ -250,8 +252,8 @@ class Order(db.Model):
     customer_phone = db.Column(db.String(50))
     customer_address = db.Column(db.Text)
     total = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(50), default='pending')
-    payment_status = db.Column(db.String(50), default='pending')  # préparé pour Stripe plus tard
+    status = db.Column(db.String(50), default='pending', index=True)
+    payment_status = db.Column(db.String(50), default='pending', index=True)  # préparé pour Stripe plus tard
     stripe_payment_intent_id = db.Column(db.String(200), nullable=True)
     stripe_session_id = db.Column(db.String(200), nullable=True)
     items = db.Column(db.Text)
@@ -268,7 +270,7 @@ class Appointment(db.Model):
     date = db.Column(db.String(50))
     time = db.Column(db.String(50))
     message = db.Column(db.Text)
-    status = db.Column(db.String(50), default='pending')
+    status = db.Column(db.String(50), default='pending', index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Contact(db.Model):
@@ -278,14 +280,14 @@ class Contact(db.Model):
     phone = db.Column(db.String(50))
     subject = db.Column(db.String(200))
     message = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(50), default='new')
+    status = db.Column(db.String(50), default='new', index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class NewsletterSubscriber(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(200), unique=True, nullable=False, index=True)
     category = db.Column(db.String(100), default='les_deux')
-    status = db.Column(db.String(50), default='active')
+    status = db.Column(db.String(50), default='active', index=True)
     subscribed_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Campaign(db.Model):
@@ -335,7 +337,6 @@ def customer_login_required(f):
 
 def generate_order_number():
     """Génère un numéro de commande unique avec timestamp pour éviter les collisions"""
-    import time
     base = f"MG{int(time.time() * 1000)}"[-15:]  # Utiliser timestamp (unique)
     # Ajouter un aléatoire pour plus de sécurité
     suffix = ''.join(random.choices(string.digits, k=4))
@@ -348,13 +349,28 @@ def generate_order_number():
     
     return number
 
+# Cache en mémoire des réglages (table `Setting`) : ils changent rarement mais
+# sont lus à chaque requête (get_setting + inject_globals). On évite ainsi de
+# refaire un SELECT * FROM setting à chaque page vue.
+_SETTINGS_CACHE_TTL = 30  # secondes
+_settings_cache = {'data': None, 'ts': 0.0}
+
+def _load_settings():
+    now = time.time()
+    if _settings_cache['data'] is None or (now - _settings_cache['ts']) > _SETTINGS_CACHE_TTL:
+        _settings_cache['data'] = {s.key: s.value for s in Setting.query.all()}
+        _settings_cache['ts'] = now
+    return _settings_cache['data']
+
+def invalidate_settings_cache():
+    """À appeler juste après tout commit qui modifie la table Setting."""
+    _settings_cache['data'] = None
+
 def get_setting(key, default=''):
-    setting = Setting.query.filter_by(key=key).first()
-    return setting.value if setting else default
+    return _load_settings().get(key, default)
 
 def validate_password_strength(password):
     """Retourne (bool, message) — au moins 8 caractères, 1 chiffre, 1 majuscule"""
-    import re
     if len(password) < 8:
         return False, "Le mot de passe doit contenir au moins 8 caractères"
     if not re.search(r'[A-Z]', password):
@@ -403,7 +419,10 @@ def create_email_template(subject, content, subscriber_email):
     </table></td></tr></table></body></html>
     """
 
-def send_newsletter_email(to_email, subject, content):
+def send_newsletter_email(to_email, subject, content, server=None):
+    """Envoie un email de newsletter. Si `server` est fourni (connexion SMTP déjà
+    ouverte et authentifiée), on la réutilise ; sinon on ouvre une connexion dédiée
+    pour cet envoi isolé."""
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = subject
@@ -411,6 +430,9 @@ def send_newsletter_email(to_email, subject, content):
         msg['To'] = to_email
         msg.attach(MIMEText(content, 'plain'))
         msg.attach(MIMEText(create_email_template(subject, content, to_email), 'html'))
+        if server is not None:
+            server.send_message(msg)
+            return True
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
             server.starttls()
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
@@ -419,6 +441,24 @@ def send_newsletter_email(to_email, subject, content):
     except Exception as e:
         print(f"Erreur envoi email: {e}")
         return False
+
+def send_newsletter_batch(subscribers, subject, content):
+    """Envoie une campagne à plusieurs abonnés en réutilisant UNE SEULE connexion SMTP,
+    au lieu d'ouvrir une connexion + authentification par email (coûteux et lent dès
+    que la liste dépasse quelques dizaines d'abonnés). Retourne le nombre d'envois réussis."""
+    if not SMTP_USERNAME or not SMTP_PASSWORD:
+        return 0
+    sent_count = 0
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            for subscriber in subscribers:
+                if send_newsletter_email(subscriber.email, subject, content, server=server):
+                    sent_count += 1
+    except Exception as e:
+        print(f"Erreur envoi campagne (connexion SMTP) : {e}")
+    return sent_count
 
 def create_transactional_email_template(subject, content_html):
     """Template email pour les emails transactionnels (confirmations, reçus) —
@@ -578,7 +618,7 @@ def send_admin_new_order_email(order):
 
 @app.context_processor
 def inject_globals():
-    settings = {s.key: s.value for s in Setting.query.all()}
+    settings = _load_settings()
     customer_logged_in = 'customer_id' in session
     customer_unread_count = 0
     if customer_logged_in:
@@ -1169,8 +1209,6 @@ def admin_dashboard():
 @login_required
 def admin_analytics():
     """Affiche l'analytique des ventes"""
-    from sqlalchemy import func
-    
     # Statistiques générales
     total_orders = Order.query.filter_by(payment_status='paid').count()
     total_revenue = db.session.query(func.sum(Order.total)).filter_by(payment_status='paid').scalar() or 0
@@ -1189,11 +1227,13 @@ def admin_analytics():
         except (json.JSONDecodeError, TypeError):
             pass
     
-    top_products_list = []
-    for product_id, qty in sorted(top_products.items(), key=lambda x: x[1], reverse=True)[:10]:
-        product = Product.query.get(product_id)
-        if product:
-            top_products_list.append({'name': product.name, 'quantity': qty})
+    top_entries = sorted(top_products.items(), key=lambda x: x[1], reverse=True)[:10]
+    top_ids = [pid for pid, _ in top_entries]
+    products_by_id = {p.id: p for p in Product.query.filter(Product.id.in_(top_ids)).all()} if top_ids else {}
+    top_products_list = [
+        {'name': products_by_id[pid].name, 'quantity': qty}
+        for pid, qty in top_entries if pid in products_by_id
+    ]
     
     # Conversion (panier → achat)
     total_checkouts = Order.query.filter_by(payment_status='pending').count() + total_orders
@@ -1266,6 +1306,7 @@ def admin_update_seuil_critique():
     else:
         db.session.add(Setting(key='stock_seuil_critique', value=valeur))
     db.session.commit()
+    invalidate_settings_cache()
     flash('Seuil de stock critique mis à jour', 'success')
     return redirect(url_for('admin_stock_critique'))
 
@@ -1531,9 +1572,15 @@ def admin_delete_contact(id):
 @login_required
 def admin_customers():
     customers = Customer.query.order_by(Customer.created_at.desc()).all()
-    unread_map = {}
-    for c in customers:
-        unread_map[c.id] = ConversationMessage.query.filter_by(customer_id=c.id, sender='customer', is_read=False).count()
+    # Une seule requête groupée au lieu d'un COUNT par client (N+1)
+    counts = (
+        db.session.query(ConversationMessage.customer_id, func.count(ConversationMessage.id))
+        .filter_by(sender='customer', is_read=False)
+        .group_by(ConversationMessage.customer_id)
+        .all()
+    )
+    counts_by_id = dict(counts)
+    unread_map = {c.id: counts_by_id.get(c.id, 0) for c in customers}
     return render_template('admin/customers.html', customers=customers, unread_map=unread_map)
 
 @app.route('/admin/customers/<int:id>', methods=['GET', 'POST'])
@@ -1604,7 +1651,7 @@ def admin_send_campaign(id):
             (NewsletterSubscriber.category == 'les_deux')
         ).all()
 
-    sent_count = sum(1 for s in subscribers if send_newsletter_email(s.email, campaign.subject, campaign.content))
+    sent_count = send_newsletter_batch(subscribers, campaign.subject, campaign.content)
 
     campaign.status = 'sent'
     campaign.sent_at = datetime.utcnow()
@@ -1636,11 +1683,12 @@ def admin_settings():
             else:
                 db.session.add(Setting(key=key, value=value))
         db.session.commit()
-        
+        invalidate_settings_cache()
+
         flash('Paramètres mis à jour avec succès', 'success')
         return redirect(url_for('admin_settings'))
 
-    settings = {s.key: s.value for s in Setting.query.all()}
+    settings = _load_settings()
     return render_template('admin/settings.html', settings=settings)
     
 # ---------- Payments (Stripe) ----------
@@ -1661,8 +1709,7 @@ def admin_payments():
         payments = []
         for charge in charges.data:
             # Convertir le timestamp Unix en datetime
-            from datetime import datetime as dt
-            charge_date = dt.fromtimestamp(charge.created)
+            charge_date = datetime.fromtimestamp(charge.created)
             
             payments.append({
                 'id': charge.id,
