@@ -22,7 +22,12 @@
 
 <aside class="admin-sidebar">
     <div class="logo">
-        <div class="logo-main">MAGIE <span>GROUPE</span></div>
+        {% if logo_url %}
+            <img src="{{ logo_url }}" alt="{{ site_name }}" class="logo-image">
+            {% else %}
+            <div class="logo-main">MAGIE <span>GROUPE</span></div>
+            <div class="logo-sub">Production</div>
+        {% endif %}
         <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase;margin-top:4px;">Panel Admin</div>
     </div>
     <nav class="admin-nav">
