@@ -1,0 +1,107 @@
+{% extends "public/base.html" %}
+
+{% block title %}Avis - {{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 40px 20px; max-width: 900px; margin: 0 auto;">
+    
+    <!-- En-tête produit -->
+    <div style="display:flex; gap:30px; margin-bottom:40px; align-items:start;">
+        {% if product.image %}
+        <img src="{{ product.image }}" alt="{{ product.name }}" style="width:200px; height:200px; object-fit:cover; border-radius:10px;">
+        {% endif %}
+        <div>
+            <h1>{{ product.name }}</h1>
+            <div style="display:flex; align-items:center; gap:10px; margin:15px 0;">
+                <div style="font-size:24px; color:var(--gold);">
+                    {% for i in range(5) %}
+                        {% if i < avg_rating %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{% endif %}
+                    {% endfor %}
+                </div>
+                <span style="color:#666;">{{ avg_rating }}/5 ({{ reviews|length }} avis)</span>
+            </div>
+            <p style="color:#888; line-height:1.6;">{{ product.description }}</p>
+            <a href="{{ url_for('product_detail', slug=product.slug) }}" class="btn btn-primary" style="margin-top:15px;">
+                Voir le produit
+            </a>
+        </div>
+    </div>
+
+    <!-- Formulaire ajouter un avis -->
+    {% if customer_logged_in %}
+    <div style="background:#f9f9f9; padding:30px; border-radius:10px; margin-bottom:40px; border-left:4px solid var(--gold);">
+        <h3 style="margin-top:0;"><i class="fas fa-pen-fancy"></i> Partager votre avis</h3>
+        <form method="POST" action="{{ url_for('add_product_review', slug=product.slug) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div style="margin-bottom:20px;">
+                <label style="display:block; margin-bottom:8px; font-weight:bold;"><i class="fas fa-star"></i> Note</label>
+                <select name="rating" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; font-size:16px;">
+                    <option value="5"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i> Excellent</option>
+                    <option value="4"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i> Très bon</option>
+                    <option value="3"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i> Bon</option>
+                    <option value="2"><i class="fas fa-star"></i><i class="fas fa-star"></i> Moyen</option>
+                    <option value="1"><i class="fas fa-star"></i> Mauvais</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <label style="display:block; margin-bottom:8px; font-weight:bold;"><i class="fas fa-heading"></i> Titre *</label>
+                <input type="text" name="title" required placeholder="Ex: Excellent rapport qualité/prix" 
+                       style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; box-sizing:border-box; font-size:16px;">
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <label style="display:block; margin-bottom:8px; font-weight:bold;"><i class="fas fa-comments"></i> Votre avis *</label>
+                <textarea name="comment" required placeholder="Dites-nous ce que vous pensez du produit..." rows="5"
+                          style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; box-sizing:border-box; font-size:16px; font-family:Arial;"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%; padding:12px; font-size:16px;">
+                <i class="fas fa-upload"></i> Publier mon avis
+            </button>
+        </form>
+        <p style="font-size:12px; color:#999; margin-top:10px;"><i class="fas fa-info-circle"></i> Votre avis sera publié après modération par nos équipes.</p>
+    </div>
+    {% else %}
+    <div style="background:#fff3cd; padding:20px; border-radius:10px; margin-bottom:40px; border-left:4px solid #ffc107;">
+        <p><i class="fas fa-user"></i> <a href="{{ url_for('account_login', next=request.path) }}" style="color:var(--gold); font-weight:bold;">Connectez-vous</a> pour laisser un avis.</p>
+    </div>
+    {% endif %}
+
+    <!-- Liste des avis -->
+    <h2><i class="fas fa-comments"></i> Avis clients ({{ reviews|length }})</h2>
+    
+    {% if reviews %}
+        {% for review in reviews %}
+        <div style="border:1px solid #eee; padding:20px; margin-bottom:20px; border-radius:10px; background:#fafafa;">
+            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:15px;">
+                <div>
+                    <h4 style="margin:0 0 5px 0;">{{ review.title }}</h4>
+                    <p style="margin:0; color:#666; font-size:14px;">par <strong>{{ review.customer_name }}</strong></p>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:18px; color:var(--gold);">
+                        {% for i in range(5) %}
+                            {% if i < review.rating %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{% endif %}
+                        {% endfor %}
+                    </div>
+                    <p style="margin:5px 0 0 0; font-size:12px; color:#999;">{{ review.created_at.strftime('%d/%m/%Y') }}</p>
+                </div>
+            </div>
+
+            <p style="margin:15px 0; line-height:1.6; color:#333;">{{ review.comment }}</p>
+
+            {% if review.verified_purchase %}
+            <span style="display:inline-block; background:#e8f5e9; color:#2e7d32; padding:5px 12px; border-radius:20px; font-size:12px; font-weight:bold;">
+                <i class="fas fa-check-circle"></i> Achat vérifié
+            </span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+    <p style="text-align:center; color:#999; padding:40px 20px;"><i class="fas fa-inbox"></i> Aucun avis pour le moment. Soyez le premier à laisser un avis !</p>
+    {% endif %}
+
+</div>
+{% endblock %}
