@@ -1,0 +1,119 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Modération Avis - Admin{% endblock %}
+
+{% block content %}
+
+<div class="admin-content">
+    <div class="content-header">
+        <h1><i class="fas fa-star" style="color:var(--gold);margin-right:12px;"></i> Modération des Avis</h1>
+    </div>
+
+    <!-- Onglets -->
+    <div style="display:flex; gap:10px; margin-bottom:30px; border-bottom:2px solid #eee; padding-bottom:15px;">
+        <button onclick="document.getElementById('pending').style.display='block'; document.getElementById('approved').style.display='none'; this.style.fontWeight='bold'; document.querySelectorAll('button')[1].style.fontWeight='normal';" 
+                style="padding:10px 20px; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold; color:var(--gold);">
+            <i class="fas fa-hourglass-half"></i> En attente ({{ pending|length }})
+        </button>
+        <button onclick="document.getElementById('pending').style.display='none'; document.getElementById('approved').style.display='block'; this.style.fontWeight='bold'; document.querySelectorAll('button')[0].style.fontWeight='normal';" 
+                style="padding:10px 20px; background:none; border:none; cursor:pointer; font-size:16px;">
+            <i class="fas fa-check-circle"></i> Approuvés ({{ approved|length }})
+        </button>
+    </div>
+
+    <!-- Avis en attente -->
+    <div id="pending">
+        <h2><i class="fas fa-exclamation-circle"></i> En Attente de Modération</h2>
+        
+        {% if pending %}
+            {% for review in pending %}
+            <div style="background:white; padding:20px; margin-bottom:20px; border-radius:10px; border-left:4px solid #FF9800; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:15px;">
+                    <div>
+                        <h4 style="margin:0 0 8px 0;">{{ review.title }}</h4>
+                        <p style="margin:0; color:#666; font-size:14px;">
+                            Par <strong>{{ review.customer_name }}</strong> 
+                            sur <strong>{{ review.product_id }}</strong>
+                            {% if review.verified_purchase %}
+                            <span style="background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:12px; font-size:12px; margin-left:10px;"><i class="fas fa-check-circle"></i> Achat vérifié</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:20px; color:var(--gold);">
+                            {% for i in range(5) %}
+                                {% if i < review.rating %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{% endif %}
+                            {% endfor %}
+                        </div>
+                        <p style="margin:5px 0 0 0; font-size:12px; color:#999;">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                    </div>
+                </div>
+
+                <p style="background:#f9f9f9; padding:15px; border-radius:5px; line-height:1.6; margin:15px 0; color:#333;">
+                    {{ review.comment }}
+                </p>
+
+                <div style="display:flex; gap:10px;">
+                    <form method="POST" action="{{ url_for('admin_approve_review', id=review.id) }}" style="display:inline;">
+                        <button type="submit" class="btn btn-success" style="padding:8px 16px; font-size:14px;">
+                            <i class="fas fa-check"></i> Approuver
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('admin_reject_review', id=review.id) }}" style="display:inline;">
+                        <button type="submit" class="btn btn-warning" style="padding:8px 16px; font-size:14px;">
+                            <i class="fas fa-times"></i> Rejeter
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <p style="text-align:center; color:#999; padding:40px;"><i class="fas fa-check-circle"></i> Aucun avis en attente ! Tous sont modérés.</p>
+        {% endif %}
+    </div>
+
+    <!-- Avis approuvés -->
+    <div id="approved" style="display:none;">
+        <h2><i class="fas fa-thumbs-up"></i> Avis Approuvés</h2>
+        
+        {% if approved %}
+            {% for review in approved %}
+            <div style="background:white; padding:20px; margin-bottom:20px; border-radius:10px; border-left:4px solid #4CAF50; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:15px;">
+                    <div>
+                        <h4 style="margin:0 0 8px 0;">{{ review.title }}</h4>
+                        <p style="margin:0; color:#666; font-size:14px;">
+                            Par <strong>{{ review.customer_name }}</strong>
+                            {% if review.verified_purchase %}
+                            <span style="background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:12px; font-size:12px; margin-left:10px;"><i class="fas fa-check-circle"></i> Achat vérifié</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:20px; color:var(--gold);">
+                            {% for i in range(5) %}
+                                {% if i < review.rating %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{% endif %}
+                            {% endfor %}
+                        </div>
+                        <p style="margin:5px 0 0 0; font-size:12px; color:#999;">{{ review.created_at.strftime('%d/%m/%Y') }}</p>
+                    </div>
+                </div>
+
+                <p style="line-height:1.6; margin:15px 0; color:#333;">{{ review.comment }}</p>
+
+                <form method="POST" action="{{ url_for('admin_delete_review', id=review.id) }}" style="display:inline;"
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet avis ?');">
+                    <button type="submit" class="btn btn-danger" style="padding:8px 16px; font-size:14px;">
+                        <i class="fas fa-trash"></i> Supprimer
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        {% else %}
+        <p style="text-align:center; color:#999; padding:40px;"><i class="fas fa-inbox"></i> Aucun avis approuvé pour le moment</p>
+        {% endif %}
+    </div>
+
+</div>
+
+{% endblock %}
