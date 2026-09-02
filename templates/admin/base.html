@@ -29,7 +29,7 @@
         <a href="{{ url_for('admin_dashboard') }}" {% if request.endpoint == 'admin_dashboard' %}class="active"{% endif %}>
             <i class="fas fa-chart-line"></i> Dashboard
         </a>
-        <a href="{{ url_for('admin_analytics') }}" class="btn btn-outline">
+        <a href="{{ url_for('admin_analytics') }}">
             <i class="fas fa-chart-line"></i> Analytique
         </a>
         <a href="{{ url_for('admin_products') }}" {% if 'product' in request.endpoint %}class="active"{% endif %}>
@@ -41,7 +41,7 @@
         <a href="{{ url_for('admin_orders') }}" {% if 'order' in request.endpoint %}class="active"{% endif %}>
             <i class="fas fa-shopping-cart"></i> Commandes
         </a>
-        <a href="{{ url_for('admin_reviews') }}" class="btn btn-outline">
+        <a href="{{ url_for('admin_reviews') }}">
             <i class="fas fa-star"></i> Modérer les avis
         </a>
         <a href="{{ url_for('admin_payments') }}" {% if request.endpoint == 'admin_payments' %}class="active"{% endif %}>
