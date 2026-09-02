@@ -13,27 +13,27 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from itsdangerous import URLSafeTimedSerializer
+depuis itsdangerous importer URLSafeTimedSerializer
 from jinja2 import ChoiceLoader, DictLoader
-import smtplib
+importer smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import cloudinary
-import cloudinary.uploader
-import stripe
+importer cloudinary
+importer cloudinary.uploader
+bande d'importation
 
 from templates_data import TEMPLATES
 from static_data import STATIC_FILES
 from static_binary_data import STATIC_BINARY_FILES
 
 
-app = Flask(
-    __name__,
-    template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'),
-    static_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+application = Flask (
+    __nom__,
+    template_folder = os.path.join ( os.path.dirname ( os.path.abspath ( __ file__ ) ) , ' templates ' ) ,​​​​
+    static_folder = os.path.join ( os.path.dirname ( os.path.abspath ( __ file__ ) ) , ' static ' )​​​​
 )
 
-# Les templates sont d'abord cherchés sur le disque (fonctionne en local),
+# Les templates sont d'abord recherchés sur le disque (fonctionne en local),
 # puis dans TEMPLATES embarqué en dur si le fichier n'existe pas sur le disque
 # (garantit le fonctionnement sur Vercel même si le dossier templates/ n'est pas empaqueté).
 app.jinja_loader = ChoiceLoader([
@@ -41,28 +41,6 @@ app.jinja_loader = ChoiceLoader([
     DictLoader(TEMPLATES)
 ])
 
-# ==================== CACHE SETTINGS ====================
-from functools import lru_cache
-import threading
-
-_settings_cache = {}
-_settings_cache_time = 0
-_settings_cache_lock = threading.Lock()
-SETTINGS_CACHE_TTL = 300  # 5 minutes
-
-def get_settings_cached():
-    """Récupère les settings avec cache de 5 minutes"""
-    global _settings_cache, _settings_cache_time
-    
-    current_time = datetime.utcnow().timestamp()
-    if _settings_cache and (current_time - _settings_cache_time) < SETTINGS_CACHE_TTL:
-        return _settings_cache
-    
-    with _settings_cache_lock:
-        _settings_cache = {s.key: s.value for s in Setting.query.all()}
-        _settings_cache_time = current_time
-    
-    return _settings_cache
     
 def embedded_static(filename):
     """Sert les fichiers statiques : d'abord depuis le disque, sinon depuis les
@@ -600,7 +578,7 @@ def send_admin_new_order_email(order):
 
 @app.context_processor
 def inject_globals():
-    settings = get_settings_cached()  # Utiliser le cache
+    settings = {s.key: s.value for s in Setting.query.all()}
     customer_logged_in = 'customer_id' in session
     customer_unread_count = 0
     if customer_logged_in:
@@ -1658,11 +1636,6 @@ def admin_settings():
             else:
                 db.session.add(Setting(key=key, value=value))
         db.session.commit()
-        
-        # 🔄 Vider le cache
-        global _settings_cache, _settings_cache_time
-        _settings_cache = {}
-        _settings_cache_time = 0
         
         flash('Paramètres mis à jour avec succès', 'success')
         return redirect(url_for('admin_settings'))
