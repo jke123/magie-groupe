@@ -25,7 +25,11 @@
 
         <button type="submit" class="btn btn-gold btn-full">Se connecter</button>
 
-        <p style="text-align:center;margin-top:20px;color:var(--text-light);">
+        <p style="text-align:center;margin-top:16px;">
+            <a href="{{ url_for('account_forgot_password') }}" style="color:var(--text-light);font-size:14px;">Mot de passe oublié ?</a>
+        </p>
+
+        <p style="text-align:center;margin-top:12px;color:var(--text-light);">
             Pas encore de compte ? <a href="{{ url_for('account_register', next=request.args.get('next')) }}" style="color:var(--gold);">Créer un compte</a>
         </p>
     </form>

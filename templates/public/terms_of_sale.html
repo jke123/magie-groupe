@@ -1,0 +1,42 @@
+{% extends "public/base.html" %}
+{% block title %}Conditions Générales de Vente - {{ site_name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Conditions Générales de Vente</h1>
+</div>
+
+<div class="legal-content">
+    <p style="background:#fff3cd;border:1px solid #ffc107;padding:16px;border-radius:8px;margin-bottom:24px;color:#856404;">
+        <strong>⚠️ Modèle à personnaliser :</strong> à faire relire par un professionnel avant mise en ligne publique,
+        notamment les délais de rétractation, garanties légales et modalités de retour propres à votre activité.
+    </p>
+
+    <h2>1. Objet</h2>
+    <p>Les présentes conditions générales de vente régissent les ventes de produits et services proposés par {{ site_name }} via ce site.</p>
+
+    <h2>2. Prix</h2>
+    <p>Les prix sont indiqués en euros (€), toutes taxes comprises le cas échéant. {{ site_name }} se réserve le droit de modifier ses prix à tout moment.</p>
+
+    <h2>3. Commande et paiement</h2>
+    <p>Le paiement s'effectue en ligne de manière sécurisée via Stripe. Aucune information bancaire n'est stockée par {{ site_name }}.</p>
+
+    <h2>4. Droit de rétractation</h2>
+    <p>Conformément à la législation en vigueur, vous disposez d'un délai de 14 jours à compter de la réception de votre commande pour exercer votre droit de rétractation, sauf exceptions légales applicables aux biens personnalisés ou périssables.</p>
+
+    <h2>5. Livraison</h2>
+    <p>Les délais de livraison sont communiqués à titre indicatif lors de la commande.</p>
+
+    <h2>6. Garanties</h2>
+    <p>Nos produits bénéficient des garanties légales de conformité et des vices cachés prévues par le Code de la consommation et le Code civil.</p>
+
+    <h2>7. Litiges</h2>
+    <p>En cas de litige, une solution amiable sera recherchée avant toute action judiciaire. À défaut, les tribunaux français seront seuls compétents.</p>
+</div>
+
+<style>
+.legal-content { max-width: 800px; margin: 0 auto; line-height: 1.8; color: var(--text-light); }
+.legal-content h2 { color: var(--black); margin: 32px 0 12px; font-family: 'Cormorant Garamond', serif; }
+</style>
+
+{% endblock %}

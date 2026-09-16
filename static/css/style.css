@@ -2,24 +2,24 @@
 
 /* ==================== VARIABLES ==================== */
 :root {
-    --gold: #c9a84c;
-    --gold-light: #e8c97a;
-    --gold-dark: #9a7a30;
-    --black: #0a0a0a;
-    --dark: #111111;
-    --dark-2: #1a1a1a;
-    --dark-3: #242424;
+    --gold: #a9895c;
+    --gold-light: #c9ae87;
+    --gold-dark: #8a6d43;
+    --black: #1c1c1a;
+    --dark: #232320;
+    --dark-2: #2c2c28;
+    --dark-3: #363631;
     --white: #ffffff;
-    --gray: #888888;
-    --gray-light: #cccccc;
-    --bg: #f5f3ee;
-    --bg-2: #ede9e0;
-    --text: #1a1a1a;
-    --text-light: #666666;
-    --border: #e0d9cc;
-    --shadow: 0 4px 32px rgba(0,0,0,0.08);
-    --shadow-lg: 0 16px 64px rgba(0,0,0,0.14);
-    --radius: 4px;
+    --gray: #8a8a82;
+    --gray-light: #d4d1c8;
+    --bg: #faf8f4;
+    --bg-2: #f1ede4;
+    --text: #262622;
+    --text-light: #706c62;
+    --border: #e5e0d5;
+    --shadow: 0 4px 24px rgba(28,28,26,0.06);
+    --shadow-lg: 0 16px 56px rgba(28,28,26,0.10);
+    --radius: 6px;
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -46,7 +46,7 @@ input, select, textarea, button { font-family: 'Inter', sans-serif; }
     background: var(--dark);
     color: var(--white);
     padding: 0;
-    border-bottom: 1px solid rgba(201,168,76,0.3);
+    border-bottom: 1px solid rgba(169,137,92,0.3);
 }
 
 .header-top {
@@ -134,7 +134,7 @@ input, select, textarea, button { font-family: 'Inter', sans-serif; }
 /* ==================== NAVIGATION ==================== */
 .nav {
     background: var(--dark-2);
-    border-bottom: 1px solid rgba(201,168,76,0.2);
+    border-bottom: 1px solid rgba(169,137,92,0.2);
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -169,7 +169,7 @@ input, select, textarea, button { font-family: 'Inter', sans-serif; }
 
 .nav-links a:hover {
     color: var(--gold);
-    background: rgba(201,168,76,0.05);
+    background: rgba(169,137,92,0.05);
 }
 
 .nav-links a.active {
@@ -259,7 +259,7 @@ input, select, textarea, button { font-family: 'Inter', sans-serif; }
     align-items: center;
     margin-bottom: 48px;
     padding-bottom: 24px;
-    border-bottom: 1px solid rgba(201,168,76,0.2);
+    border-bottom: 1px solid rgba(169,137,92,0.2);
 }
 
 .mobile-menu-close {
@@ -319,7 +319,7 @@ input, select, textarea, button { font-family: 'Inter', sans-serif; }
 .mobile-contact-info {
     margin-top: 40px;
     padding-top: 32px;
-    border-top: 1px solid rgba(201,168,76,0.2);
+    border-top: 1px solid rgba(169,137,92,0.2);
 }
 
 .mobile-contact-info a {
@@ -421,7 +421,7 @@ input, select, textarea, button { font-family: 'Inter', sans-serif; }
 .btn-gold:hover {
     background: var(--gold-light);
     transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(201,168,76,0.3);
+    box-shadow: 0 8px 24px rgba(169,137,92,0.3);
     color: var(--dark);
 }
 
@@ -519,7 +519,7 @@ input, select, textarea, button { font-family: 'Inter', sans-serif; }
 
 .form-control:focus {
     border-color: var(--gold);
-    box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+    box-shadow: 0 0 0 3px rgba(169,137,92,0.12);
 }
 
 .form-control::placeholder {
@@ -660,7 +660,7 @@ select.form-control {
 
 .badge-success { background: #e8f5ef; color: #1a6b45; }
 .badge-danger { background: #fdf0f0; color: #7b1a1a; }
-.badge-gold { background: rgba(201,168,76,0.12); color: var(--gold-dark); }
+.badge-gold { background: rgba(169,137,92,0.12); color: var(--gold-dark); }
 .badge-dark { background: var(--dark); color: var(--white); }
 
 /* ==================== HERO ==================== */
@@ -679,8 +679,8 @@ select.form-control {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     background:
-        radial-gradient(ellipse 800px 500px at 50% 0%, rgba(201,168,76,0.14) 0%, transparent 60%),
-        linear-gradient(135deg, rgba(201,168,76,0.06) 0%, transparent 50%, rgba(201,168,76,0.04) 100%);
+        radial-gradient(ellipse 800px 500px at 50% 0%, rgba(169,137,92,0.14) 0%, transparent 60%),
+        linear-gradient(135deg, rgba(169,137,92,0.06) 0%, transparent 50%, rgba(169,137,92,0.04) 100%);
     pointer-events: none;
 }
 
@@ -816,7 +816,7 @@ select.form-control {
 
 /* ==================== INFO BOX ==================== */
 .info-box {
-    background: rgba(201,168,76,0.08);
+    background: rgba(169,137,92,0.08);
     border-left: 3px solid var(--gold);
     padding: 16px 20px;
     border-radius: var(--radius);
@@ -839,7 +839,7 @@ select.form-control {
     color: var(--white);
     padding: 48px;
     border-radius: var(--radius);
-    border: 1px solid rgba(201,168,76,0.2);
+    border: 1px solid rgba(169,137,92,0.2);
 }
 
 .contact-info-box h2 {
@@ -848,7 +848,7 @@ select.form-control {
     color: var(--white);
     margin-bottom: 36px;
     padding-bottom: 20px;
-    border-bottom: 1px solid rgba(201,168,76,0.2);
+    border-bottom: 1px solid rgba(169,137,92,0.2);
 }
 
 .contact-item {
@@ -861,8 +861,8 @@ select.form-control {
 .contact-icon {
     width: 44px;
     height: 44px;
-    background: rgba(201,168,76,0.12);
-    border: 1px solid rgba(201,168,76,0.3);
+    background: rgba(169,137,92,0.12);
+    border: 1px solid rgba(169,137,92,0.3);
     border-radius: var(--radius);
     display: flex;
     align-items: center;
@@ -998,7 +998,7 @@ select.form-control {
     color: var(--white);
     padding: 72px 0 0;
     margin-top: 100px;
-    border-top: 1px solid rgba(201,168,76,0.2);
+    border-top: 1px solid rgba(169,137,92,0.2);
 }
 
 .footer-grid {
@@ -1067,7 +1067,7 @@ select.form-control {
 }
 
 .social-link:hover {
-    background: rgba(201,168,76,0.15) !important;
+    background: rgba(169,137,92,0.15) !important;
     border-color: var(--gold) !important;
     color: var(--gold) !important;
     transform: none !important;
@@ -1075,8 +1075,8 @@ select.form-control {
 
 /* Newsletter Footer */
 .newsletter-footer {
-    background: rgba(201,168,76,0.06);
-    border: 1px solid rgba(201,168,76,0.2);
+    background: rgba(169,137,92,0.06);
+    border: 1px solid rgba(169,137,92,0.2);
     padding: 28px;
     border-radius: var(--radius);
 }

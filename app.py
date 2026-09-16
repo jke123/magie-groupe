@@ -639,7 +639,28 @@ def inject_globals():
         customer_name=session.get('customer_name', ''),
         customer_unread_count=customer_unread_count
     )
-    
+
+@app.route('/mentions-legales')
+def legal_notice():
+    return render_template('public/legal_notice.html')
+
+@app.route('/conditions-generales-de-vente')
+def terms_of_sale():
+    return render_template('public/terms_of_sale.html')
+
+@app.route('/politique-de-confidentialite')
+def privacy_policy():
+    return render_template('public/privacy_policy.html')
+
+@app.errorhandler(404)
+def not_found_error(e):
+    return render_template('public/error_404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(e):
+    db.session.rollback()
+    return render_template('public/error_500.html'), 500
+
 @app.route('/sitemap.xml')
 def sitemap():
     pages = []
@@ -874,6 +895,60 @@ def account_login():
 
     return render_template('public/account_login.html')
 
+@app.route('/compte/mot-de-passe-oublie', methods=['GET', 'POST'])
+@limiter.limit("5 per hour")
+def account_forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        customer = Customer.query.filter_by(email=email).first()
+        if customer:
+            token = serializer.dumps(customer.email, salt='password-reset')
+            reset_url = url_for('account_reset_password', token=token, _external=True)
+            content_html = f"""
+            <h2 style="margin-top:0;">Réinitialisation de votre mot de passe</h2>
+            <p>Bonjour {customer.name},</p>
+            <p>Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le lien ci-dessous (valable 1 heure) :</p>
+            <p style="text-align:center;margin:24px 0;">
+                <a href="{reset_url}" style="background:#a9895c;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:bold;">Réinitialiser mon mot de passe</a>
+            </p>
+            <p style="font-size:12px;color:#888;">Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email.</p>
+            """
+            content_plain = f"Réinitialisez votre mot de passe : {reset_url}"
+            send_transactional_email(customer.email, "Réinitialisation de votre mot de passe", content_html, content_plain)
+        flash('Si cet email existe dans notre système, un lien de réinitialisation vient de vous être envoyé.', 'info')
+        return redirect(url_for('account_login'))
+    return render_template('public/account_forgot_password.html')
+
+@app.route('/compte/reinitialiser/<token>', methods=['GET', 'POST'])
+def account_reset_password(token):
+    try:
+        email = serializer.loads(token, salt='password-reset', max_age=3600)
+    except Exception:
+        flash('Ce lien de réinitialisation est invalide ou a expiré. Refaites une demande.', 'error')
+        return redirect(url_for('account_forgot_password'))
+
+    customer = Customer.query.filter_by(email=email).first()
+    if not customer:
+        flash('Compte introuvable.', 'error')
+        return redirect(url_for('account_forgot_password'))
+
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        if password != confirm_password:
+            flash('Les mots de passe ne correspondent pas', 'error')
+            return render_template('public/account_reset_password.html', token=token)
+        valid, msg = validate_password_strength(password)
+        if not valid:
+            flash(msg, 'error')
+            return render_template('public/account_reset_password.html', token=token)
+        customer.password_hash = generate_password_hash(password)
+        db.session.commit()
+        flash('Mot de passe réinitialisé avec succès. Vous pouvez vous connecter.', 'success')
+        return redirect(url_for('account_login'))
+
+    return render_template('public/account_reset_password.html', token=token)
+
 @app.route('/compte/deconnexion')
 def account_logout():
     session.pop('customer_id', None)
@@ -1100,6 +1175,29 @@ def stripe_webhook():
                 print(f"⚠️  Commande {order_number} confirmée mais email NOT SENT")
         else:
             print(f"⚠️  Webhook reçu mais commande {order_number} introuvable ou déjà payée")
+
+    elif event['type'] == 'charge.refunded':
+        charge_obj = event['data']['object']
+        payment_intent_id = charge_obj.get('payment_intent')
+        order = Order.query.filter_by(stripe_payment_intent_id=payment_intent_id).first()
+        if order:
+            order.payment_status = 'refunded'
+            order.status = 'cancelled'
+            db.session.commit()
+            print(f"💸 Commande {order.order_number} marquée remboursée")
+        else:
+            print(f"⚠️  Remboursement reçu mais aucune commande liée au paiement {payment_intent_id}")
+
+    elif event['type'] == 'charge.dispute.created':
+        dispute_obj = event['data']['object']
+        payment_intent_id = dispute_obj.get('payment_intent')
+        order = Order.query.filter_by(stripe_payment_intent_id=payment_intent_id).first()
+        if order:
+            order.payment_status = 'disputed'
+            db.session.commit()
+            print(f"⚠️  Litige ouvert sur la commande {order.order_number} — vérifiez le Dashboard Stripe")
+        else:
+            print(f"⚠️  Litige reçu mais aucune commande liée au paiement {payment_intent_id}")
 
     return '', 200
     

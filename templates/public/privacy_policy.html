@@ -1,0 +1,38 @@
+{% extends "public/base.html" %}
+{% block title %}Politique de Confidentialité - {{ site_name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Politique de Confidentialité</h1>
+</div>
+
+<div class="legal-content">
+    <p style="background:#fff3cd;border:1px solid #ffc107;padding:16px;border-radius:8px;margin-bottom:24px;color:#856404;">
+        <strong>⚠️ Modèle à personnaliser :</strong> vérifiez la conformité RGPD complète avant mise en ligne publique.
+    </p>
+
+    <h2>1. Données collectées</h2>
+    <p>Lors de la création d'un compte ou d'une commande, nous collectons : nom, email, téléphone, adresse postale. Lors du paiement, Stripe collecte directement vos informations bancaires — {{ site_name }} n'y a jamais accès.</p>
+
+    <h2>2. Utilisation des données</h2>
+    <p>Vos données sont utilisées uniquement pour : la gestion de votre compte, le traitement de vos commandes, la communication avec notre service client, et l'envoi de notre newsletter si vous y êtes abonné(e).</p>
+
+    <h2>3. Conservation</h2>
+    <p>Vos données sont conservées pendant la durée nécessaire à la gestion de la relation commerciale, conformément aux obligations légales de conservation.</p>
+
+    <h2>4. Vos droits</h2>
+    <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement et de portabilité de vos données. Pour exercer ces droits, contactez-nous à {{ site_email or '[email de contact]' }}.</p>
+
+    <h2>5. Cookies</h2>
+    <p>Ce site utilise uniquement des cookies techniques strictement nécessaires à son fonctionnement (session de connexion, panier). Aucun cookie de tracking publicitaire n'est utilisé.</p>
+
+    <h2>6. Sécurité</h2>
+    <p>Vos mots de passe sont chiffrés et jamais stockés en clair. Les paiements sont traités par Stripe, certifié PCI-DSS niveau 1.</p>
+</div>
+
+<style>
+.legal-content { max-width: 800px; margin: 0 auto; line-height: 1.8; color: var(--text-light); }
+.legal-content h2 { color: var(--black); margin: 32px 0 12px; font-family: 'Cormorant Garamond', serif; }
+</style>
+
+{% endblock %}

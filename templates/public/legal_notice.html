@@ -1,0 +1,48 @@
+{% extends "public/base.html" %}
+{% block title %}Mentions Légales - {{ site_name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Mentions Légales</h1>
+</div>
+
+<div class="legal-content">
+    <p style="background:#fff3cd;border:1px solid #ffc107;padding:16px;border-radius:8px;margin-bottom:24px;color:#856404;">
+        <strong>⚠️ Modèle à personnaliser :</strong> ce texte est un point de départ standard et ne remplace pas un avis juridique.
+        Complétez les informations manquantes (identité exacte de l'entreprise, SIRET, forme juridique) avant mise en ligne publique.
+    </p>
+
+    <h2>Éditeur du site</h2>
+    <p>
+        Nom de l'entreprise : {{ site_name }}<br>
+        Adresse : {{ site_address or '[À compléter]' }}<br>
+        Téléphone : {{ site_phone or '[À compléter]' }}<br>
+        Email : {{ site_email or '[À compléter]' }}<br>
+        SIRET / SIREN : [À compléter]<br>
+        Forme juridique : [À compléter — auto-entrepreneur, SARL, etc.]
+    </p>
+
+    <h2>Directeur de la publication</h2>
+    <p>[Nom du responsable]</p>
+
+    <h2>Hébergement</h2>
+    <p>
+        Ce site est hébergé par Vercel Inc.<br>
+        340 S Lemon Ave #4133, Walnut, CA 91789, États-Unis<br>
+        <a href="https://vercel.com" target="_blank">vercel.com</a>
+    </p>
+
+    <h2>Propriété intellectuelle</h2>
+    <p>L'ensemble du contenu de ce site (textes, images, logos) est la propriété de {{ site_name }}, sauf mention contraire, et ne peut être reproduit sans autorisation préalable.</p>
+
+    <h2>Données personnelles</h2>
+    <p>Le traitement de vos données personnelles est décrit dans notre <a href="{{ url_for('privacy_policy') }}">Politique de Confidentialité</a>.</p>
+</div>
+
+<style>
+.legal-content { max-width: 800px; margin: 0 auto; line-height: 1.8; color: var(--text-light); }
+.legal-content h2 { color: var(--black); margin: 32px 0 12px; font-family: 'Cormorant Garamond', serif; }
+.legal-content a { color: var(--gold); }
+</style>
+
+{% endblock %}

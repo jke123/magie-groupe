@@ -1,0 +1,14 @@
+{% extends "public/base.html" %}
+{% block title %}Page introuvable - {{ site_name }}{% endblock %}
+{% block content %}
+
+<div style="text-align:center;padding:100px 20px;">
+    <div style="font-size:80px;font-family:'Cormorant Garamond',serif;font-weight:700;color:var(--gold);margin-bottom:8px;">404</div>
+    <h1 style="margin-bottom:16px;">Page introuvable</h1>
+    <p style="color:var(--text-light);max-width:420px;margin:0 auto 32px;">
+        La page que vous cherchez n'existe pas ou a été déplacée.
+    </p>
+    <a href="{{ url_for('index') }}" class="btn btn-gold">Retour à l'accueil</a>
+</div>
+
+{% endblock %}
